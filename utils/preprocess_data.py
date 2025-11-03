@@ -77,7 +77,6 @@ def split_change_stable(df6, df9, year='2025'):
     dfparis.loc[mask, 'status'] = 'new_host'
     
     # start_date, end_date = pd.to_datetime('2025-04-01'), pd.to_datetime('2025-06-30')
-
     # dfparis['status'] = dfparis.apply(
     #     lambda r: (
     #         "new_host"
@@ -90,8 +89,7 @@ def split_change_stable(df6, df9, year='2025'):
     # )
 
     # 统计房东状态，但只看Q2避免，Q1Q2重复记录
-    print("HOST STAUTS in Q2:", dfparis[dfparis['scraped_date']==f'{year}Q2']['status'].value_counts(dropna=False),"\n")
-
+    print("※ HOST STAUTS CHANGE (Q2): \n", dfparis[dfparis['scraped_date']==f'{year}Q2']['status'].value_counts(dropna=False),"\n")
 
 
     #描述房源数量变化
@@ -130,16 +128,16 @@ def split_change_stable(df6, df9, year='2025'):
         #虽然计算sim，但是所有标记成：变化1，不变0。仅用于筛选
 
         if row['scraped_date'] != f"{year}Q2":
-            return 0  # 只对 Q2 标记
+            return 0  # 只对 Q2 标记，Q1均为0
         if pd.isna(row['host_about_q1']) and pd.notna(row['host_about']):
-            return 1  #0表示完全不一样，或1标记变化 #Q1 没有文本Q2 新增文本; 或填写文本的新房东
+            return 1  # 新增文本; （新房东或之前未填写文本的房东）
         if pd.notna(row['host_about_q1']) and pd.notna(row['host_about']):#老房东&bio不为空# row['host_about'] != row['host_about_q2']:
             sim= text_similarity(row['host_about_q1'], row['host_about']) 
             if sim < threshold:## 老文本有明显变化
                 return 1 
             else:
-                return 0#无明显改变是就填NAN
-        return 0  # 其他情况
+                return 0 #无明显改变是就填NAN
+        return 0 # 未变&其他情况
 
     if "host_about_changed" not in dfparis:
         dfparis['host_about_changed'] = dfparis.apply(host_about_change, axis=1)
@@ -159,12 +157,12 @@ def split_change_stable(df6, df9, year='2025'):
     # 标记 Q2 相对于 Q1 的变化
     def host_picture_url_change(row):
         if row['scraped_date'] !=f"{year}Q2":
-            return 0 # 只对 Q2 标记
+            return 0 # 只对 Q2 标记, Q1均为0
         if pd.isna(row['host_picture_url_q1']) and pd.notna(row['host_picture_url']):
             return 1  # 新增照片
         if pd.notna(row['host_picture_url_q1']) and pd.notna(row['host_picture_url']) and row['host_picture_url'] != row['host_picture_url_q1']:
             return 1  # 修改照片
-        return None # 其他情况
+        return 0 # 没变&其他情况
 
     if "host_picture_url_changed" not in dfparis:
         dfparis['host_picture_url_changed'] = dfparis.apply(host_picture_url_change, axis=1)
@@ -187,43 +185,48 @@ def split_change_stable(df6, df9, year='2025'):
     #在整个数据上应用：
     dfparisQ2['presentation_change'] = dfparisQ2.apply(presentation_change_level, axis=1)
     print(f"HOST IM global : {dfparisQ2.presentation_change.value_counts()} \n")
-    print(f"HOST IM CHANGE :\n {dfparisQ2[['host_about_changed','host_picture_url_changed']].value_counts(dropna=False)}\n")
+    # print(f"HOST IM CHANGE :\n {dfparisQ2[['host_about_changed','host_picture_url_changed']].value_counts(dropna=False)}\n")
 
 
     # split
-    df_change = dfparisQ2[
-        (dfparisQ2['status'].isin(['new_host', 'reactive_host'])) |
-        # (dfparisQ2['host_about_changed'] ==1) |
-        # (dfparisQ2['host_picture_url_changed'] ==1)
-        dfparisQ2['presentation_change']> 0 #改变bio/pic
-    ]
-    df_stable = dfparisQ2[~dfparisQ2['host_id'].isin(df_change['host_id'])]#.isin() 来做“是否在某个列表中”的列级比较，然后加 ~ 表示取反。
 
-    print(f"len change: {len(df_change)}")
-    print(f"len stable: {len(df_stable)} \n")
+    dfparisQ2['is_changed'] = (
+        (dfparisQ2['status'].isin(['new_host', 'reactive_host'])) |
+        (dfparisQ2['presentation_change'] > 0)
+    )    #返回T/F
+    df_change = dfparisQ2[dfparisQ2['is_changed']]
+    df_stable = dfparisQ2[~dfparisQ2['is_changed']]
+
+    # df_change = dfparisQ2[
+    #     (dfparisQ2['status'].isin(['new_host', 'reactive_host'])) |
+    #     dfparisQ2['presentation_change']> 0 #改变bio/pic
+    # ]
+    # df_stable = dfparisQ2[~dfparisQ2['host_id'].isin(df_change['host_id'])]#.isin() 来做“是否在某个列表中”的列级比较，然后加 ~ 表示取反。
+    #按照host_id筛选有风险，会排除掉一个房东的多个房源，只取第一个
+
+
+
+
+    print(f"※ len change: {len(df_change)}")
+    print(f"※ len stable: {len(df_stable)} \n")
 
     #房东市场行为变化统计：
     print("※ HOST STATUS CHANGE:")
-    print(df_change.status.value_counts()/len(df_change))
-    print(df_stable.status.value_counts()/len(df_stable),"\n")
+    print(df_change.status.value_counts()/len(df_change),'\n')
+    # print(df_stable.status.value_counts()/len(df_stable),"\n")#tjs old_host
 
     #房东自我展示变化统计：
     print("※ HOST IM CHANGE:")
-    print(df_change.presentation_change.value_counts()/len(df_change))
-    print(df_stable.presentation_change.value_counts()/len(df_stable),"\n")
+    print(df_change .presentation_change.value_counts()/len(df_change))
+    print(f"※ HOST IM CHANGE (exclude no_change):\n {df_change[['host_about_changed','host_picture_url_changed']].value_counts(dropna=False)}\n")
 
-    #====================host_since=====================
-    # #change中新活跃的老房东，新进入的房东（少），改变bio或pic的房东    
-    
-    # monthly_count=(
-    #     df_change['host_since']
-    #     .dt.to_period('M')
-    #     .value_counts()
-    #     .sort_index()
-    # )
-    # print(f"HOST SINCE in CHANGE : {df_change.host_since.value_counts().sort_index(ascending=False)} \n")
+    # print(df_stable.presentation_change.value_counts()/len(df_stable),"\n")# tjs0
+
+
+
+    # ================END====================
     end_time=time.time()
-    print(f"Temps d'exécution :{end_time-start_time:.2f}")
+    print(f"Temps d'exécution :{end_time-start_time:.2f} sec.")
     return dfparis, df_change, df_stable
 
 
