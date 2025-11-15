@@ -46,11 +46,6 @@ def unzip_csv_gz(folder='raw_data', output_folder='data'):
 
 
 
-
-
-
-
-
 ##==================================SPLIT============================================##
 
 
@@ -253,6 +248,8 @@ def split_change_stable(df6, df9, year='2025'):
 
 
 
+
+
 def save_global_change_stable_csv(csv_files, year:str, location:str, output_folder="data_jo_processed"):
     
     print("NB. csv files enter strictly in order : global-change-stable!")
@@ -293,39 +290,55 @@ def save_global_change_stable_csv(csv_files, year:str, location:str, output_fold
 
 
 
+##=============================DESC STAT=====================================##
+
+def desc_catORnum(df, vars):
+
+    print("================= BALN PROCESSED VARIABLES =====================")
+    for var in vars:
+        col = df[var]
+        # nunique = col.nunique(dropna=False)
+        # print(f"\n>>> {var} ({col.dtype}), unique={nunique}")
+
+        # ① 分类变量检测规则
+        is_categorical = (
+            col.dtype == "object" or                 # 字符串
+            col.nunique(dropna=False) <= 5 or                          # 值太少
+            set(col.unique()) <= {0,1}               # 明确是二元 dummy
+        )
+
+        # ② 输出方式
+        if is_categorical:
+            print(col.value_counts(dropna=False).sort_values(ascending=False), "\n")
+        else:
+            print(col.describe(include="all"), "\n")
+
+        print("-----------------------------------------------------------")
+    return 
+
+
+
+
 
 ##==================================HOST VARS============================================##
-# from langdetect import detect, DetectorFactory
-# DetectorFactory.seed = 0  # 保证结果可重复
-
-# def detect_language(text):
-#     """
-#     检测文本的语言。
-#     返回 ISO 639-1 语言代码，例如：
-#     'en'（英语）、'zh-cn'（中文）、'fr'（法语）等。
-#     """
-#     try:
-#         if isinstance(text, str) and text.strip():
-#             return detect(text)
-#         else:
-#             return "no_text"  # 空值或非字符串
-#     except Exception:
-#         return "unk"  # 检测失败的情况
-
-
-
 
 import langid #这个库速度更快、稳定性高。
-
 def detect_language_langid(text):
     try:
         if isinstance(text, str) and text.strip():
             lang, _ = langid.classify(text)
-            return lang
+            if lang=="en" or lang=="fr":
+                return lang
+            else :
+                return "other_langs"
         else:
             return "no_text"  # 空值或非字符串
+        
+
     except Exception:
         return "unk"  # 检测失败的情况
+
+
 
 
 
@@ -336,14 +349,15 @@ def preprocess_host_variables(df):
     var_toprocess=["host_is_superhost","review_scores_rating", "host_since","host_about",
                 "host_response_time","host_response_rate","calculated_host_listings_count"]
     
-    print(f"\n\n******************************HOST VARS******************************"
+    print(f"\n\n******************************HOST VARS******************************\n"
           f"PROCESS METHODS :\n"
           f"- host_is_sueprhost: fillna('f')\n"
-          f"- review_scores_rating: 缺失严重，新增一列 'has_rating'\n"
-          f"- host_since: 按照ab页面显示计算年数，0.5-1年填1， 0-0.5年填0 \n"
-          f"- has_host_about:新增3列'has_host_about','lang','len',\n"
-          f"- host_response_time: fillna(no_response_time) \n"
-          f"- host_response_rate:缺失严重，增加一列has_response_rate， fillna(0)\n"
+          f"- review_scores_rating: 缺失严重，新增一列, 'has_rating:1/0'\n"
+          f"- host_since: 新增1列years_since_host :float, 按照ab页面显示计算年数，0.5-1年填1， 0-0.5年填0 \n"
+          f"- has_host_about:新增3列'has_host_about:1/0','lang:en/fr/other_langs','len:int',\n"
+          f"- host_response_time: fillna('no_response_time') \n"
+          f"- host_response_rate:缺失严重，增加一列has_response_rate:1/0， fillna(0)\n"
+          f"- calculated_host_listings_count : 新增1列'professional_host:1/0'\n"
           )
     
     for var in var_toprocess:
@@ -412,7 +426,7 @@ def preprocess_host_variables(df):
                 df['host_response_rate'] = pd.to_numeric(df["host_response_rate"], errors="coerce")
             
             elif var=="calculated_host_listings_count":
-                df["professional_host"]=df["calculated_host_listings_count"].apply(lambda x : "f" if x ==1 else "t")
+                df["professional_host"]=df["calculated_host_listings_count"].apply(lambda x : 0 if x ==1 else 1)
 
             else :
                 print(f"[INFO] {var} hasn't specific traitement!")
@@ -426,19 +440,25 @@ def preprocess_host_variables(df):
                 "host_response_rate","has_response_rate",
                 "calculated_host_listings_count", "professional_host"]
     
-    print(f"==========================VARS================================")
-    print(var_ok+var_processed,"\n\n")
 
-    print(f"===============BIALN PROCESSED VARIABLES=====================")
-    for var in var_processed:
-        print(df[var].dtype)
-        if df[var].dtype =="int64" or df[var].dtype =="float64":#!="object"
-            print(df[var].describe(include='all'),"\n")
-        else :             
-            print(df[var].value_counts(dropna=False).sort_values(ascending=False),"\n")
-        print("-----------------------------------------------------------")
+    print(f"==========================HOST VARS================================")
+    impo_vars=["host_picture_url","host_identity_verified","number_of_reviews"]+var_processed
+    print(f"{len(impo_vars)} IMPO VARS:{impo_vars}\n") 
 
-    # delect intermidate cols
+
+    # print(f"===============BIALN PROCESSED VARIABLES=====================")
+    desc_catORnum(df, vars=var_processed)
+
+    # for var in var_processed:
+    #     print(df[var].dtype)
+    #     if df[var].dtype =="int64" or df[var].dtype =="float64":#!="object"
+    #         print(df[var].describe(include='all'),"\n")
+    #     else :             
+    #         print(df[var].value_counts(dropna=False).sort_values(ascending=False),"\n")
+    #     print("-----------------------------------------------------------")
+
+
+    # delect intermidate cols:optionnal
     # intermediate_cols=[]
     df=df.drop(columns=['days_since_host'])#?
     print(f"Intermediate cols deleted: days_since_host")
@@ -496,7 +516,7 @@ def filter_by_proxy(df,proxy_vars=['price',"availability_90"]):
         print(f"- {len_before-len_after} dropped in {var}")
 
     print(f"len avant de filtrer {', '.join(proxy_vars)}: {len(df)}")
-    print(f"apres: {len(df_filtred)}")
+    print(f"apres: {len(df_filtred)}\n")
    
     return df, df_filtred
 
@@ -524,7 +544,7 @@ def add_is_within_km(df, threshold_km=3):
     print(f"\n\n ==============================LOCATION=============================\n"
             # f"CALCULATION METHODS :\n"
             # f"-'latitude','longitude': \n 计算房源到各大主要venue的距离，果最小值<=5km, 则在is_within_5km上填't',反之'f'"
-            f"venues_df :\n {venues_df}\n"
+            # f"venues_df :\n {venues_df}\n"
             )
     
     # 确保坐标数值化
@@ -579,7 +599,7 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_90"], obj_vars=["r
           f"  nettoyer + dropna sur les vars : {', '.join(proxy_vars)} \n"
           f"  ==> get df_filtered \n\n"
           f"2) desc statistique :{', '.join(obj_vars)} \n\n"
-          f"3) location :'latitude','longitude':\n"
+          f"3) location :'latitude','longitude': 新增一列'is_within_Xkm'\n"
           f"  计算房源到各大主要venue的距离，果最小值<=5km, 则在is_within_3km上填1,反之0 \n"
         )
                 
@@ -587,21 +607,29 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_90"], obj_vars=["r
     df, df_filtered=filter_by_proxy(df, proxy_vars=['price',"availability_90"])
 
     # 4 obj vars:
-    print(f"\n\n=============================OBJ VARS=============================")
-    for var in obj_vars:
-        # print(f"var : {var}, type : {df[var].dtype}")
-        if df[var].dtype =="int64" or df[var].dtype =="float64":#!="object"数字型
-            print(f"NAN:{df[var].isna().sum()}")
-            print(df[var].describe(include='all'),"\n")
-        else :
-            print(f"NAN:{df[var].isna().sum()}")             
-            print(df[var].value_counts().sort_values(ascending=False),"\n")
-        print("-----------------------------------------------------------")
+    # print(f"\n\n=============================OBJ VARS=============================")
+    desc_catORnum(df, vars=obj_vars)
 
+    # for var in obj_vars:
+    #     # print(f"var : {var}, type : {df[var].dtype}")
+    #     if df[var].dtype =="int64" or df[var].dtype =="float64":#!="object"数字型
+    #         print(f"NAN:{df[var].isna().sum()}")
+    #         print(df[var].describe(include='all'),"\n")
+    #     else :
+    #         print(f"NAN:{df[var].isna().sum()}")             
+    #         print(df[var].value_counts().sort_values(ascending=False),"\n")
+    #     print("-----------------------------------------------------------")
 
     # location:
     df_filtered=add_is_within_km(df_filtered,threshold_km=3)
     return df_filtered
+
+
+
+
+
+
+
 
 
 
