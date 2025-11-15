@@ -224,8 +224,11 @@ def split_change_stable(df6, df9, year='2025'):
 
     print("===================================SUMMARY ON CHANGE===================================")
     print("CHANGE == new_host| reactive_host | host_about_change| host_pic_change")
-    print(f"※ len change: {len(df_change)}")
-    print(f"※ len stable: {len(df_stable)} \n")
+    print(f"※ len change: {len(df_change)} | len new_host: {len(df_change[df_change['status']=='new_host'])}\n"
+          f"※ len stable: {len(df_stable)} \n"
+          )
+    
+    
 
     #房东市场行为变化统计：
     print("※ HOST STATUS CHANGE dans df_change:")
