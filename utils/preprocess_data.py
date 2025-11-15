@@ -224,8 +224,7 @@ def split_change_stable(df6, df9, year='2025'):
     #     dfparisQ2['presentation_change']> 0 #改变bio/pic
     # ]
     # df_stable = dfparisQ2[~dfparisQ2['host_id'].isin(df_change['host_id'])]#.isin() 来做“是否在某个列表中”的列级比较，然后加 ~ 表示取反。
-    #按照host_id筛选有风险，会排除掉一个房东的多个房源，只取第一个
-
+    # 按照host_id筛选有风险，会排除掉一个房东的多个房源，只取第一个
 
 
     print("===================================SUMMARY ON CHANGE===================================")
