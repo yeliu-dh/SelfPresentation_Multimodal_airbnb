@@ -1,9 +1,11 @@
-sanboxJO/*
-preprocess/data_jo*
-B_images/images_raw/*
-
 sandbox/*
+sanboxJO/*
 logs/*
+
+
+preprocess/data_jo*
+
+B_images/images_raw/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
