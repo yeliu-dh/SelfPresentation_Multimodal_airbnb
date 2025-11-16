@@ -158,26 +158,61 @@ def download_images_batch(id_url_list, out_dir='images_raw', max_workers=12):
 
 
 
-def split_copy (test_df, train_df, pool_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TRAIN_DIR = "images_TRAIN", POOL_DIR = "images_POOL"):
+def split_copy (sampled_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TRAIN_DIR = "images_TRAIN", POOL_DIR = "images_POOL"):
+    from sklearn.model_selection import train_test_split
+
+    #---------------------split no stratify---------------------
+    test_ratio = 0.15
+    train_ratio = 0.35
+    pool_ratio = 0.50   # 不用直接用，最后自动得到
+
+    # Step 1：POOL vs REST
+    pool_df, rest_df = train_test_split(
+        sampled_df,
+        test_size=pool_ratio,
+        # stratify=strat,
+        random_state=42
+    )
+
+    train_ratio_updated = train_ratio / (1 - pool_ratio) 
+    train_df, test_df = train_test_split(
+        rest_df,
+        train_size=train_ratio_updated,
+        # stratify=strat,
+        random_state=42
+    )
+    print(f"TEST vs TRAIN vs POOL :{len(test_df)}, {len(train_df)}, {len(pool_df)}")
+
+
+    #----------------------COPY---------------------------
     # 自动创建文件夹
     for d in [TEST_DIR, TRAIN_DIR, POOL_DIR]:
         os.makedirs(d, exist_ok=True)
 
     def copy_images(df, target_dir):
-        for img in df["host_id"]:
-            src = os.path.join(RAW_DIR, img)
-            dst = os.path.join(target_dir, img)
-
+        for id in df["host_id"]:
+            id=str(id)
+            filename=id+'.jpg'
+            src = os.path.join(RAW_DIR, filename)
+            dst = os.path.join(target_dir, filename)
+            
+            i=0
             if os.path.exists(src):
-                shutil.copy(src, dst)
+                if os.path.exists(dst):
+                    print(f"[INFO] host {id} pic already copied: {dst}")
+                else:
+                    shutil.copy(src, dst)
             else:
-                print(f"[WARNING] File not found: {src}")
-
+                i+=1
+                print(f"[WARNING {i}] host {id} pic not found: {src}")
+    
+    start_time=time.time()
     copy_images(test_df, TEST_DIR)
     copy_images(train_df, TRAIN_DIR)
     copy_images(pool_df, POOL_DIR)
+    end_time=time.time()
 
-    print(f"[SUCCES] Images copied from {RAW_DIR}to {TEST_DIR} /{TEST_DIR} /{POOL_DIR}!")
+    print(f"\n[SUCCES] Images copied from {RAW_DIR}to {TEST_DIR} /{TEST_DIR} /{POOL_DIR} in {end_time-start_time:.2f} sec!")
     return
 
 
