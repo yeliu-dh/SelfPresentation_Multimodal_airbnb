@@ -2,9 +2,7 @@ sandbox/*
 sanboxJO/*
 logs/*
 
-
-preprocess/data_jo*
-
+A_preprocess/data_*
 B_images/images_raw/*
 
 # Byte-compiled / optimized / DLL files
