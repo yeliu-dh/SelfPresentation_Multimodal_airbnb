@@ -4,11 +4,69 @@ import os, sys
 import requests
 from requests.exceptions import RequestException
 import time
+import shutil
 from tqdm import tqdm
 tqdm.pandas()  # 这行让 pandas 的 apply() 支持进度条
 
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+## STRATIFIED SAMPLING
+
+
+def stratified_sampling(df, groupby=["is_changed", "has_host_about", "lang"],N_total=2000):
+    print(f"*******************STRATIFIED SAMPLING***************************\n"
+          f"METHODS:\n"
+          f"regroupe df by {','.join(groupby)};\n"
+          f"sampling proportionally {N_total} pics;\n"
+          f"=> get a list of set (host_id, host_picture_id)\n")
+    
+ 
+    print(f"===============INPUT INFO=================\n"
+          f"len before deduplication by host_id:{len(df)}")
+    df=df.drop_duplicates(subset=['host_id'])
+    cols=['host_id', "host_picture_url"]+groupby
+    df=df[cols]
+    print(f"after:{len(df)}\n")#-5K
+
+    strata = (
+        df
+        .groupby(["is_changed", "has_host_about", "lang"])
+        .size()
+        .reset_index(name="N_s")
+    )
+    # 每个类别按照原df比例在smaple中应该拥有的数量 = 按比例 * 总数
+    strata["n_sample"] = (strata["N_s"] / strata["N_s"].sum() * N_total).round().astype(int)
+    print(f"strata :\n {strata}\n")
+
+
+    sampled_list = []
+    for _, row in strata.iterrows():
+        cond = (
+            (df["is_changed"] == row["is_changed"]) &
+            (df["has_host_about"] == row["has_host_about"]) &
+            (df["lang"] == row["lang"])
+        )
+        subset = df[cond]
+
+        # 如果某层数量不足，直接全取
+        n = min(row["n_sample"], len(subset))
+
+        sampled = subset.sample(n=n, random_state=42)
+        sampled_list.append(sampled)
+
+    sampled_df = pd.concat(sampled_list, ignore_index=True)
+    # print(sampled_df,"\n")
+
+    id_url_df=sampled_df.copy()[:][['host_id','host_picture_url']]
+    id_url_list= list(zip(id_url_df["host_id"], id_url_df["host_picture_url"]))
+    print(f"len SAMPLE/'id_url_list': {len(id_url_list)}")
+    display(sampled_df.head())
+    return sampled_df, id_url_list
+
+
+
+
 
 
 
@@ -31,11 +89,6 @@ def download_image(id, url, out_dir='images_raw', timeout=10):
 
     os.makedirs(out_dir, exist_ok=True)
 
-    #filename
-    # parsed = urlparse(url)
-    # filename = os.path.basename(parsed.path)
-    # if not filename:
-    #     filename = f"{hash(url)}.jpg"
     filename= f"{str(id)}.jpg"
     out_path = os.path.join(out_dir, filename)
 
@@ -89,9 +142,86 @@ def download_images_batch(id_url_list, out_dir='images_raw', max_workers=12):
                 results[host_id] = None
                 # print(f"[ERROR] 下载出错: host_id={host_id}, 错误: {e}")
     end_time=time.time()
-    print(f"\n [SUCCES] downloaded {len(id_url_list)} : {end_time-start_time:.2f} sec!\n")
+    print(f"\n[SUCCES] downloaded {len(id_url_list)} pics : {end_time-start_time:.2f} sec!\n")
+    #try1:[SUCCES] downloaded 2001 : 673.04 sec!
+
+    # report:
+    print(f"success: {len([p for p in results.values() if p])} pics!")
+    print(f"fails: {len([u for u, p in results.items() if not p])} pics!")#无效url/下载失败！
 
     return results
 
 
 
+
+
+
+
+
+def split_copy (test_df, train_df, pool_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TRAIN_DIR = "images_TRAIN", POOL_DIR = "images_POOL"):
+    # 自动创建文件夹
+    for d in [TEST_DIR, TRAIN_DIR, POOL_DIR]:
+        os.makedirs(d, exist_ok=True)
+
+    def copy_images(df, target_dir):
+        for img in df["host_id"]:
+            src = os.path.join(RAW_DIR, img)
+            dst = os.path.join(target_dir, img)
+
+            if os.path.exists(src):
+                shutil.copy(src, dst)
+            else:
+                print(f"[WARNING] File not found: {src}")
+
+    copy_images(test_df, TEST_DIR)
+    copy_images(train_df, TRAIN_DIR)
+    copy_images(pool_df, POOL_DIR)
+
+    print(f"[SUCCES] Images copied from {RAW_DIR}to {TEST_DIR} /{TEST_DIR} /{POOL_DIR}!")
+    return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##=====================================================================================================##
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class MultiTaskClassifier(nn.Module):
+    def __init__(self, input_dim=512, hidden_dim=128):
+        super().__init__()
+        # shared layers
+        self.shared_fc = nn.Linear(input_dim, hidden_dim)
+        self.relu = nn.ReLU()
+
+        # heads for each task
+        self.type_head = nn.Linear(hidden_dim, 3)       # Type: life/pro/else
+        self.quality_head = nn.Linear(hidden_dim, 1)    # Quality: high/low
+        self.smile_head = nn.Linear(hidden_dim, 1)      # Is_smiling: yes/no
+
+    def forward(self, x):
+        x = self.relu(self.shared_fc(x))
+        type_out = self.type_head(x)          # logits for softmax
+        quality_out = torch.sigmoid(self.quality_head(x))  # probability 0-1
+        smile_out = torch.sigmoid(self.smile_head(x))      # probability 0-1
+        return type_out, quality_out, smile_out
+
+# 示例训练 loop 的损失
+def multi_task_loss(type_logits, type_labels, quality_pred, quality_labels, smile_pred, smile_labels):
+    type_loss = F.cross_entropy(type_logits, type_labels)
+    quality_loss = F.binary_cross_entropy(quality_pred, quality_labels.float())
+    smile_loss = F.binary_cross_entropy(smile_pred, smile_labels.float())
+    return type_loss + quality_loss + smile_loss
