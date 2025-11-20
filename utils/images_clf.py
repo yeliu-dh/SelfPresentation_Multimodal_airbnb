@@ -218,7 +218,7 @@ import numpy as np
 import torch
 # import clip
 from PIL import Image
-improt time
+import time
 from tqdm import tqdm
 
 # -----------------------------------------
@@ -236,53 +236,85 @@ def load_npz(path):
 def save_npz(path, data_dict):
     np.savez(path, **data_dict)
 
-# -----------------------------------------
-# Vectorize one folder
-# -----------------------------------------
-def embed_folder(model, preprocess, device, folder_path, save_path):
-    # #检查文件夹：    
-    # os.makedirs(os.path.dirname(save_path), exist_ok=True)
+# # -----------------------------------------
+# # Vectorize one folder
+# # -----------------------------------------
+# def embed_folder(model, processor, device, folder_path, save_path):
+#     # #检查文件夹：    
+#     # os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-    #检查emb文件：
-    embeddings = load_npz(save_path)
+#     #检查emb文件：
+#     embeddings = load_npz(save_path)
     
+#     files = sorted([
+#         f for f in os.listdir(folder_path)
+#         if f.lower().endswith((".jpg", ".jpeg", ".png"))
+#     ])
+#     for fname in tqdm (files, desc=f"Embedding '{os.path.basename(folder_path)}' => '{save_path}'"):
+#         if fname in embeddings:    
+#             print(f"[INFO] {fname} already embbeded! SKIPPING !")
+#             # 已经读取了旧的embeddings，无需再把旧的keys添加，最后得到的时list是完整的，可用于生成mapping!
+#             continue
+          
+#         img_path = os.path.join(folder_path, fname)
+#         try:
+#             img = Image.open(img_path).convert("RGB")
+#             img_input = processor(img).unsqueeze(0).to(device)
+
+#             with torch.no_grad():
+#                 emb = model.encode_image(img_input).cpu().numpy()[0]
+#                 emb = emb.astype("float32")
+#                 emb = emb / np.linalg.norm(emb)
+            
+#             embeddings[fname] = emb
+        
+#         # except Exception as e:
+#         #     print(f"[ERROR] Failed: {fname},{e}")
+#         except Exception as e:
+#             print(f"[ERROR] {fname}: {e}\n")
+
+#     save_npz(save_path, embeddings)
+#     return list(embeddings.keys())
+
+def embed_folder(model, processor, device, folder_path, save_path):
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    try:
+        embeddings = load_npz(save_path)
+    except FileNotFoundError:
+        embeddings = {}
+
     files = sorted([
         f for f in os.listdir(folder_path)
         if f.lower().endswith((".jpg", ".jpeg", ".png"))
     ])
     
-    # for fname in files:
-    for fname in tqdm (files, desc=f"Embedding {os.path.basename(folder_path)} TO {save_path}..."):
-        if fname in embeddings:    # skip if exists
+    for fname in tqdm(files, desc=f"Embedding '{os.path.basename(folder_path)}' => '{save_path}'"):
+        if fname in embeddings:
+            print(f"[INFO] {fname} already embedded! SKIPPING!")
             continue
         
         img_path = os.path.join(folder_path, fname)
-        
         try:
             img = Image.open(img_path).convert("RGB")
-            img_input = preprocess(img).unsqueeze(0).to(device)
+            inputs = processor(images=img, return_tensors="pt").to(device)
+            img_input = inputs['pixel_values']
 
             with torch.no_grad():
-                emb = model.encode_image(img_input).cpu().numpy()[0]
+                emb = model.get_image_features(img_input).cpu().numpy()[0]
                 emb = emb.astype("float32")
                 emb = emb / np.linalg.norm(emb)
             
             embeddings[fname] = emb
-        
         except Exception as e:
-            print(f"[ERROR] Failed: {fname}, {e}")
-    
+            import traceback
+            print(f"[ERROR] Failed: {fname}, error = {e}")
+            traceback.print_exc()
+
     save_npz(save_path, embeddings)
     return list(embeddings.keys())
 
-
-
-# # -----------------------------------------
-# # Main
-# # -----------------------------------------
-# def main():
-
-def embed_images_save_mapping(images_folders=["images_TEST","images_TRAIN","images_POOL"], embeddings_folder='embeddings'):
+def embed_images_save_mapping(model, processor, device, images_folders=["images_TEST","images_TRAIN","images_POOL"], embeddings_folder='embeddings'):
     start_time=time.time()
 
     os.makedirs(embeddings_folder, exist_ok=True)
@@ -291,25 +323,12 @@ def embed_images_save_mapping(images_folders=["images_TEST","images_TRAIN","imag
     for folder_path in images_folders:
         foldername=folder_path.split("_")[-1] 
         save_path= os.path.join(embeddings_folder, f"emb_{foldername}.npz")
-
-        mapping[foldername] = embed_folder(folder_path,save_path)
-        # print(f"[EMBEDDING..]{folder_path}=> {save_path}")
-              
-    # mapping["test"] = embed_folder("images_TEST",  "embeddings/test_emb.npz")
-    # mapping["train"] = embed_folder("images_TRAIN", "embeddings/train_emb.npz")
-    # mapping["pool"] = embed_folder("images_POOL",  "embeddings/pool_emb.npz")
-
+        mapping[foldername]=embed_folder(model, processor, device, folder_path, save_path)
+ 
     with open(os.path.join(embeddings_folder, "mapping.json"), "w") as f:
         json.dump(mapping, f, indent=2)
     end_time=time.time()
-    print("[SUCCES] All embeddings saved and mapped: {end_time-start_time:.2f} sec!")
-
-# if __name__ == "__main__":
-#     main()
-
-
-
-
+    print(f"[SUCCES] All embeddings saved and mapped: {end_time-start_time:.2f} sec!")
 
 
 

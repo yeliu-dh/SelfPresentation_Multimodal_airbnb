@@ -6,6 +6,9 @@ logs/*
 # data
 A_preprocess/data_*
 B_images/images_*/*
+B_images/embeddings/*
+B_images/embeddings_*/*
+B_images/annotations_*/*
 
 # note
 note_airbnb.docx
