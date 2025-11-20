@@ -1,9 +1,16 @@
+# draft
 sandbox/*
 sanboxJO/*
 logs/*
 
+# data
 A_preprocess/data_*
 B_images/images_*/*
+
+# note
+note_airbnb.docx
+note_airbnb_code.docx
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
