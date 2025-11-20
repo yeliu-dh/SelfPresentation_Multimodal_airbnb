@@ -603,7 +603,7 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_90"], obj_vars=["r
           f"  ==> get df_filtered \n\n"
           f"2) desc statistique :{', '.join(obj_vars)} \n\n"
           f"3) location :'latitude','longitude': 新增一列'is_within_Xkm'\n"
-          f"  计算房源到各大主要venue的距离，果最小值<=5km, 则在is_within_3km上填1,反之0 \n"
+          f"  计算房源到各大主要venue的距离，果最小值<={threshold_km} km, 则在is_within_{threshold_km}km上填1,反之0 \n"
         )
                 
     #proxy

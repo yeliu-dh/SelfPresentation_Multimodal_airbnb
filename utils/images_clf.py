@@ -67,10 +67,6 @@ def stratified_sampling(df, groupby=["is_changed", "has_host_about", "lang"],N_t
 
 
 
-
-
-
-
 # URL 校验
 def check_pic_url(url, timeout=3):
     if not isinstance(url, str) or url.strip() == '':
