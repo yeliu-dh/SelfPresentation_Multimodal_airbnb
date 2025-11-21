@@ -300,6 +300,23 @@ def embed_folder(model, processor, device, folder_path, save_path):
     return list(embeddings.keys())
 
 def embed_images_save_mapping(model, processor, device, images_folders=["images_TEST","images_TRAIN","images_POOL"], embeddings_folder='embeddings'):
+    """
+    folder : embeddings
+    
+    - embeddings_XXX.npz
+    {
+    "host_id01.jpg": [0.12, 0.51, ...],   # 512-d embedding
+    "host_id02.jpg": [...],
+    }
+
+    - mapping.json
+    {
+    "TEST": ["hos_id.jpg", "host_id.jpg", ...],
+    "TRAIN": [...],
+    "POOL": [...]
+    }
+
+    """
     start_time=time.time()
 
     os.makedirs(embeddings_folder, exist_ok=True)
