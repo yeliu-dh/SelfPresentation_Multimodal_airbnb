@@ -204,8 +204,30 @@ def split_copy (sampled_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TR
     copy_images(pool_df, POOL_DIR)
     end_time=time.time()
 
+    #ls的输入json：
+
+
     print(f"\n[SUCCES] Images copied from {RAW_DIR}to {TEST_DIR} /{TEST_DIR} /{POOL_DIR} in {end_time-start_time:.2f} sec!")
     return
+
+
+# import pandas as pd
+# import json
+
+# df = pd.read_csv("host_data.csv")
+
+# records = []
+# for _, row in df.iterrows():
+#     records.append({
+#         "image": row["host_picture_url"],
+#         "host_id": int(row["host_id"]),
+#         "is_changed": bool(row["is_changed"]),
+#         "has_host_about": int(row["has_host_about"]),
+#         "lang": row["lang"]
+#     })
+
+# with open("ls_import.json", "w") as f:
+#     json.dump(records, f, indent=2)
 
 
 
@@ -236,46 +258,9 @@ def load_npz(path):
 def save_npz(path, data_dict):
     np.savez(path, **data_dict)
 
-# # -----------------------------------------
-# # Vectorize one folder
-# # -----------------------------------------
-# def embed_folder(model, processor, device, folder_path, save_path):
-#     # #检查文件夹：    
-#     # os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-#     #检查emb文件：
-#     embeddings = load_npz(save_path)
-    
-#     files = sorted([
-#         f for f in os.listdir(folder_path)
-#         if f.lower().endswith((".jpg", ".jpeg", ".png"))
-#     ])
-#     for fname in tqdm (files, desc=f"Embedding '{os.path.basename(folder_path)}' => '{save_path}'"):
-#         if fname in embeddings:    
-#             print(f"[INFO] {fname} already embbeded! SKIPPING !")
-#             # 已经读取了旧的embeddings，无需再把旧的keys添加，最后得到的时list是完整的，可用于生成mapping!
-#             continue
-          
-#         img_path = os.path.join(folder_path, fname)
-#         try:
-#             img = Image.open(img_path).convert("RGB")
-#             img_input = processor(img).unsqueeze(0).to(device)
-
-#             with torch.no_grad():
-#                 emb = model.encode_image(img_input).cpu().numpy()[0]
-#                 emb = emb.astype("float32")
-#                 emb = emb / np.linalg.norm(emb)
-            
-#             embeddings[fname] = emb
-        
-#         # except Exception as e:
-#         #     print(f"[ERROR] Failed: {fname},{e}")
-#         except Exception as e:
-#             print(f"[ERROR] {fname}: {e}\n")
-
-#     save_npz(save_path, embeddings)
-#     return list(embeddings.keys())
-
+# -----------------------------------------
+# Vectorize one folder
+# -----------------------------------------
 def embed_folder(model, processor, device, folder_path, save_path):
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
