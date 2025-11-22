@@ -148,6 +148,65 @@ def download_images_batch(id_url_list, out_dir='images_raw', max_workers=12):
 
 
 
+import os
+import json
+import pandas as pd
+import time
+from tqdm import tqdm
+
+
+def ls_import_data(df,folder='images_TEST'):
+    start_time=time.time()
+
+    # 读取 images_TEST 文件名
+    # folder = "images_TEST"
+    filenames = sorted(os.listdir(folder))
+
+    records = []
+    for file in tqdm(filenames, desc="Generating import data for label studio..."):
+        # 跳过非图片文件
+        if not file.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+        # 文件名：41925864.jpg → 41925864
+        host_id = os.path.splitext(file)[0]
+
+        # host_id 通常是整数，所以这里尝试转成 int
+        try:
+            host_id_int = int(host_id)
+        except:
+            print(f"[WARN] Cannot parse host_id from file: {file}")
+            continue
+
+        # 查找该 host_id 对应的行
+        row = df[df["host_id"] == host_id_int]
+
+        if row.empty:
+            print(f"[WARN] host_id {host_id_int} not found in DataFrame!")
+            continue
+
+        row = row.iloc[0]
+
+        # 构造 Label Studio task 数据
+        record = {
+            # "folder": folder,                # 保留原始文件名作为额外信息
+            "host_id": int(row["host_id"]),
+            "filename":file,
+            "image": row["host_picture_url"],      # 自动加载远程 URL
+        }
+        records.append(record)
+
+    # 保存成 JSON
+    output_path = os.path.join(folder, "000filename_url_records.json")
+    with open(output_path, "w") as f:
+        json.dump(records, f, indent=2)
+    end_time=time.time()
+    print(f"[SUCCESS] JSON filename:url saved to {output_path}, total {len(records)} items: {end_time-start_time:.2f} sec!\n")
+    
+    return 
+
+
+
+
 
 
 def split_copy (sampled_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TRAIN_DIR = "images_TRAIN", POOL_DIR = "images_POOL"):
@@ -203,31 +262,21 @@ def split_copy (sampled_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TR
     copy_images(train_df, TRAIN_DIR)
     copy_images(pool_df, POOL_DIR)
     end_time=time.time()
-
+    print(f"\n[SUCCES] Images copied from {RAW_DIR}to {TEST_DIR} /{TEST_DIR} /{POOL_DIR} in {end_time-start_time:.2f} sec!\n")
+    
     #ls的输入json：
+    for folder in [TEST_DIR, TRAIN_DIR, POOL_DIR]:
+        ls_import_data(sampled_df,folder)
 
-
-    print(f"\n[SUCCES] Images copied from {RAW_DIR}to {TEST_DIR} /{TEST_DIR} /{POOL_DIR} in {end_time-start_time:.2f} sec!")
     return
 
 
-# import pandas as pd
-# import json
 
-# df = pd.read_csv("host_data.csv")
 
-# records = []
-# for _, row in df.iterrows():
-#     records.append({
-#         "image": row["host_picture_url"],
-#         "host_id": int(row["host_id"]),
-#         "is_changed": bool(row["is_changed"]),
-#         "has_host_about": int(row["has_host_about"]),
-#         "lang": row["lang"]
-#     })
 
-# with open("ls_import.json", "w") as f:
-#     json.dump(records, f, indent=2)
+
+
+
 
 
 
@@ -302,7 +351,7 @@ def embed_folder(model, processor, device, folder_path, save_path):
 def embed_images_save_mapping(model, processor, device, images_folders=["images_TEST","images_TRAIN","images_POOL"], embeddings_folder='embeddings'):
     """
     folder : embeddings
-    
+
     - embeddings_XXX.npz
     {
     "host_id01.jpg": [0.12, 0.51, ...],   # 512-d embedding
@@ -332,6 +381,29 @@ def embed_images_save_mapping(model, processor, device, images_folders=["images_
     end_time=time.time()
     print(f"[SUCCES] All embeddings saved and mapped: {end_time-start_time:.2f} sec!")
 
+
+##=============================PARSE MANUEL ANNOTATIONS================================================##
+import json
+import pandas as pd
+
+# with open("label_studio_export.json") as f:
+#     data = json.load(f)
+
+# rows = []
+# for item in data:
+#     filename = item["data"]["filename"]
+#     res = item["annotations"][0]["result"]
+#     row = {"filename": filename}
+#     for r in res:
+#         row[r["from_name"]] = r["value"]["choices"][0]
+#     rows.append(row)
+
+# df_labels = pd.DataFrame(rows)
+# print(df_labels.head())
+
+
+
+##======================================AUTOCLF=======================================================
 
 
 

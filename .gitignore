@@ -9,6 +9,7 @@ B_images/images_*/*
 B_images/embeddings/*
 B_images/embeddings_*/*
 B_images/annotations_*/*
+B_images/labels/*
 
 # note
 note_airbnb.docx
