@@ -9,3 +9,4 @@ tqdm==4.67.1
 transformers==4.57.1
 label-studio==1.21.0
 ultralytics==8.3.220
+

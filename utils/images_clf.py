@@ -282,6 +282,9 @@ def split_copy (sampled_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TR
 
 
 
+
+
+
 ##=========================================clip EMBEDDINGS==========================================================##
 import os
 import json
@@ -382,6 +385,8 @@ def embed_images_save_mapping(model, processor, device, images_folders=["images_
     print(f"[SUCCES] All embeddings saved and mapped: {end_time-start_time:.2f} sec!")
 
 
+
+
 ##=============================PARSE MANUEL ANNOTATIONS================================================##
 import json
 import pandas as pd
@@ -403,38 +408,4 @@ import pandas as pd
 
 
 
-##======================================AUTOCLF=======================================================
 
-
-
-##=========================================CLF============================================================##
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-class MultiTaskClassifier(nn.Module):
-    def __init__(self, input_dim=512, hidden_dim=128):
-        super().__init__()
-        # shared layers
-        self.shared_fc = nn.Linear(input_dim, hidden_dim)
-        self.relu = nn.ReLU()
-
-        # heads for each task
-        self.type_head = nn.Linear(hidden_dim, 3)       # Type: life/pro/else
-        self.quality_head = nn.Linear(hidden_dim, 1)    # Quality: high/low
-        self.smile_head = nn.Linear(hidden_dim, 1)      # Is_smiling: yes/no
-
-    def forward(self, x):
-        x = self.relu(self.shared_fc(x))
-        type_out = self.type_head(x)          # logits for softmax
-        quality_out = torch.sigmoid(self.quality_head(x))  # probability 0-1
-        smile_out = torch.sigmoid(self.smile_head(x))      # probability 0-1
-        return type_out, quality_out, smile_out
-
-# 示例训练 loop 的损失
-def multi_task_loss(type_logits, type_labels, quality_pred, quality_labels, smile_pred, smile_labels):
-    type_loss = F.cross_entropy(type_logits, type_labels)
-    quality_loss = F.binary_cross_entropy(quality_pred, quality_labels.float())
-    smile_loss = F.binary_cross_entropy(smile_pred, smile_labels.float())
-    return type_loss + quality_loss + smile_loss
