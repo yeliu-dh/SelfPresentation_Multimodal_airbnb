@@ -78,11 +78,12 @@ def embed_text_by_clip(text_list, device, model, processor):
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
         return text_features.cpu().numpy().astype("float32")
 
+
+##仅在改动时候重新embedding
 def embed_labels_txt_img(labels_text_path="labels/labels_text.json",
                          image_emb_path="embeddings_SAMPLE/emb_SAMPLE.npz",
                          labels_emb_path="labels/labels_emb_txt-img.pkl"):
     print(f"======================EMBEDDING + FEW SHOT=======================\n") 
-    
     save_labels_text(labels_text_path)  
 
     # ---- 0) 
@@ -192,7 +193,7 @@ def predict_defaut_type_smile_sex(image_emb_path = "embeddings_SAMPLE/emb_SAMPLE
           f"-type : life/pro/UNK (text prompt+few-shot)\n"
           f"-is_smiling: '1'/'0'/'UNK'\n"
           f"-sex: :M/F/MIX/UNK \n")
-    # start_time=time.time()
+    start_time=time.time()
 
     # ------------------------
     # 读取 embeddings
@@ -243,8 +244,8 @@ def predict_defaut_type_smile_sex(image_emb_path = "embeddings_SAMPLE/emb_SAMPLE
     with open(prediction_path, "w") as f:
         json.dump(predictions, f, indent=2)
 
-    # end_time=time.time()
-    print(f"[SUCCES] Auto predictions on {len(image_embs)} images saved → {prediction_path}!\n")
+    end_time=time.time()
+    print(f"[SUCCES] Auto predictions on {len(image_embs)} images saved → {prediction_path}: {end_time-start_time:.2f} sec!\n")
     return 
 
 
@@ -299,8 +300,7 @@ def detect_person_and_quality(
     print(f"============================DETECTION===============================")
     print(f"-has_person by yolo:'1'/'0',\n"
           f"quality by Laplacian : high/low/UNK\n")
-
-    # start_time=time.time()
+    start_time=time.time()
 
     os.makedirs(os.path.dirname(detection_path), exist_ok=True)
     records = {}
@@ -330,8 +330,9 @@ def detect_person_and_quality(
 
     with open(detection_path, "w") as f:
         json.dump(records, f, indent=2)
-    # end_time=time.time()
-    print(f"[SUCCES] {len(image_files)} detection results saved to {detection_path}!\n")
+
+    end_time=time.time()
+    print(f"[SUCCES] {len(image_files)} detection results saved to {detection_path} {end_time-start_time:.2f} sec!\n")
     return 
 
 
@@ -531,11 +532,16 @@ def autoclf(images_folder,
             detection_path,
             auto_annotations_path,
             ls_annotations_path):
+    n_images=len([f for f in os.listdir(images_folder) if f.endswith('.jpg')])
 
-    start_time=time.time()    
-    embed_labels_txt_img(labels_text_path,
-                         image_emb_path,
-                         labels_emb_path)
+    all_start_time=time.time()    
+    # 无修改则不需要重新embedding:
+    # embed_labels_txt_img(labels_text_path,
+    #                      image_emb_path,
+    #                      labels_emb_path)
+
+
+
     predict_defaut_type_smile_sex(image_emb_path,
                                 labels_emb_path,
                                 prediction_path)
@@ -548,11 +554,12 @@ def autoclf(images_folder,
                         prediction_path,
                         auto_annotations_path)
     
-    evalate_clf(ls_annotations_path,
-                auto_annotations_path)    
-    end_time=time.time()
-    print(f"Embeddings-> Prediction-> Detection-> Merge-> Evaluation \n"
-        f"{len([f for f in os.listdir(images_folder) if f.endswith('.jpg')])} images in {images_folder} :{end_time-start_time:.2f} sec! \n")
+    if ls_annotations_path is not None:    
+        evalate_clf(ls_annotations_path,
+                    auto_annotations_path)    
+    all_end_time=time.time()
+    print(f"[PROCESS] Embeddings-> Prediction-> Detection-> Merge-> Evaluation \n"
+        f"{n_images} images in {images_folder} :{all_end_time-all_start_time:.2f} sec! \n")
     return 
 
 
