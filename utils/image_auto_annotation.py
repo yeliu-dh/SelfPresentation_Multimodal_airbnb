@@ -535,11 +535,11 @@ def autoclf(images_folder,
     n_images=len([f for f in os.listdir(images_folder) if f.endswith('.jpg')])
 
     all_start_time=time.time()    
+
     # 无修改则不需要重新embedding:
     # embed_labels_txt_img(labels_text_path,
     #                      image_emb_path,
     #                      labels_emb_path)
-
 
 
     predict_defaut_type_smile_sex(image_emb_path,
