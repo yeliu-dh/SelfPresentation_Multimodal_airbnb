@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score, classification_report
 
 
 ##======================================AUTOCLF=======================================================
-##======================================2_test_autoclf.ipynb=======================================================
+##=====================================2_test_autoclf.ipynb===========================================
 
 def read_json(json_path):
     with open(json_path, 'r', encoding='utf-8')as f:
@@ -28,37 +28,37 @@ def save_json(data, json_path):
 
 
 
-def save_labels_text(labels_text_path="labels/labels_text.json"):
-    type_labels = {
-        "life": 
-            "a photo of a person in a visible daily scene or some activities",
-        "pro": 
-            "a portrait or headshot,focused mainly on the face, with little or no background information.",
-        "UNK": 
-            "an image without any people or cannot determine whether it is lifestyle or portrait"
-    }
-    is_smiling_labels = {
-        "1": "a person smiling visibly",
-        "0": "a person not smiling",
-        "UNK": "no person or cannot see their face"
-    }
-    sex_labels = {
-        "M": "a photo of a man",
-        "F": "a photo of a woman",
-        "MIX": "a photo with multiple people of mixed gender",
-        "UNK": "the gender of the person cannot be determined or no person present"
-    }
-    labels_text = {
-        "type": type_labels,
-        "is_smiling": is_smiling_labels,
-        "sex": sex_labels   
-    }
-    os.makedirs(os.path.dirname(labels_text_path), exist_ok=True)
+# def save_labels_text(labels_text_path="labels/labels_text.json"):
+#     type_labels = {
+#         "life": 
+#             "a photo of a person in a visible daily scene or some activities",
+#         "pro": 
+#             "a portrait or headshot,focused mainly on the face, with little or no background information.",
+#         "UNK": 
+#             "an image without any people or cannot determine whether it is lifestyle or portrait"
+#     }
+#     is_smiling_labels = {
+#         "1": "a person smiling visibly",
+#         "0": "a person not smiling",
+#         "UNK": "no person or cannot see their face"
+#     }
+#     sex_labels = {
+#         "M": "a photo of a man",
+#         "F": "a photo of a woman",
+#         "MIX": "a photo with multiple people of mixed gender",
+#         "UNK": "the gender of the person cannot be determined or no person present"
+#     }
+#     labels_text = {
+#         "type": type_labels,
+#         "is_smiling": is_smiling_labels,
+#         "sex": sex_labels   
+#     }
+#     os.makedirs(os.path.dirname(labels_text_path), exist_ok=True)
 
-    with open (labels_text_path,"w", encoding='utf-8') as f :
-        json.dump(labels_text, f, indent=2)
-    print(f"[SUCCES] labels text saved to {labels_text_path}!")
-    return 
+#     with open (labels_text_path,"w", encoding='utf-8') as f :
+#         json.dump(labels_text, f, indent=2)
+#     print(f"[SUCCES] labels text saved to {labels_text_path}!")
+#     return 
 
 
 ##================================ EMBEDDINGS + FEW SHOT LABELS================================== 
@@ -80,72 +80,130 @@ def embed_text_by_clip(text_list, device, model, processor):
 
 
 ##仅在改动时候重新embedding
-def embed_labels_txt_img(labels_text_path="labels/labels_text.json",
+# labels_text_path="labels/labels_text.json",
+# labels_img_path="labels/labels_img.json",
+# def embed_labels_txt_img(labels_prompt_path='labels/labels_prompt.json',
+#                          image_emb_path="embeddings_SAMPLE/emb_SAMPLE.npz",
+#                          labels_emb_path="labels/labels_emb_txt-img.pkl"):
+#     print(f"======================EMBEDDING + FEW SHOT=======================\n") 
+
+
+#     # ---- 0) 
+#     device='cuda' if torch.cuda.is_available() else "cpu" 
+#     model_name="openai/clip-vit-base-patch32"
+#     model = CLIPModel.from_pretrained(model_name).to(device)
+#     processor = CLIPProcessor.from_pretrained(model_name)
+
+#     # ---- 1) 读取标签 ----
+#     labels_prompt=read_json(labels_prompt_path)
+
+#     # ---- 2) 对所有文本生成 embedding ----
+#     # labels_emb = {}
+#     # for category, dic in labels_text.items():
+#     #     texts = list(dic.values())
+#     #     # emb = embed_text_by_clip(texts)
+#     #     emb=embed_text_by_clip(texts, device, model, processor)
+#     #     # 按字典顺序对应回 keys
+#     #     labels_emb[category] = {
+#     #         cls_name: emb[i:i+1]
+#     #         for i, cls_name in enumerate(dic.keys())
+#     #     }
+
+#     # ---- 3) 给 “type” 类别加入 example images embeddings ----
+
+#     # 加载 image embeddings
+#     img_embs = np.load(image_emb_path)
+
+#     # 自己挑一些示例图片：
+#     # # life_imgs = ["106365215.jpg", "517697918.jpg"]
+#     # # pro_imgs  = ["102571900.jpg","71320446.jpg"]
+#     # # unk_imgs=["52801103.jpg","425502119.jpg"]
+
+#     # final_type_emb = {}
+#     # for cls_name, emb_text in labels_emb["type"].items():
+#     #     all_embs = [emb_text]  # start with text prompt emb
+
+#     #     if cls_name == "life":
+#     #         for f in life_imgs:
+#     #             all_embs.append(img_embs[f][None])
+#     #     if cls_name == "pro":
+#     #         for f in pro_imgs:
+#     #             all_embs.append(img_embs[f][None])
+#     #     if cls_name=='UNK':
+#     #         for f in unk_imgs:
+#     #             all_embs.append(img_embs[f][None])
+
+#     #     final_type_emb[cls_name] = np.vstack(all_embs)
+
+#     # # 覆盖原来的 type
+#     # labels_emb["type"] = final_type_emb
+
+#     # ---- 4) 保存为 pkl（支持嵌套结构） ----
+#     os.makedirs(os.path.dirname(labels_emb_path), exist_ok=True)
+
+#     with open(labels_emb_path, "wb") as f:
+#         pickle.dump(labels_emb, f)
+
+#     print(f"[SUCCES] labels text-image prompt embeded by {model_name} saved to {labels_emb_path}!\n")
+
+#     return 
+
+
+
+
+
+def embed_labels_txt_img(labels_prompt_path='labels/labels_prompt.json',
                          image_emb_path="embeddings_SAMPLE/emb_SAMPLE.npz",
                          labels_emb_path="labels/labels_emb_txt-img.pkl"):
-    print(f"======================EMBEDDING + FEW SHOT=======================\n") 
-    save_labels_text(labels_text_path)  
+    print(f"======================EMBEDDING TEXT + FEW SHOT IMG=======================\n") 
 
-    # ---- 0) 
+    # ---- 0) 初始化 CLIP ----
     device='cuda' if torch.cuda.is_available() else "cpu" 
     model_name="openai/clip-vit-base-patch32"
     model = CLIPModel.from_pretrained(model_name).to(device)
     processor = CLIPProcessor.from_pretrained(model_name)
 
-    # ---- 1) 读取文本标签 ----
-    with open(labels_text_path, "r") as f:
-        labels_text = json.load(f)
+    # ---- 1) 读取 labels prompt ----
+    labels_prompt = read_json(labels_prompt_path)
 
-    # ---- 2) 对所有文本生成 embedding ----
-    labels_emb = {}
-    for category, dic in labels_text.items():
-        texts = list(dic.values())
-        # emb = embed_text_by_clip(texts)
-        emb=embed_text_by_clip(texts, device, model, processor)
-        # 按字典顺序对应回 keys
-        labels_emb[category] = {
-            cls_name: emb[i:i+1]
-            for i, cls_name in enumerate(dic.keys())
-        }
-
-    # ---- 3) 给 “type” 类别加入 example images embeddings ----
-
-    # 加载 image embeddings
+    # ---- 2) 加载 image embeddings ----
     img_embs = np.load(image_emb_path)
 
-    # 自己挑一些示例图片：
-    life_imgs = ["106365215.jpg", "517697918.jpg"]
-    pro_imgs  = ["102571900.jpg","71320446.jpg"]
-    unk_imgs=["52801103.jpg","425502119.jpg"]
+    # ---- 3) 构建最终 labels_emb ----
+    labels_emb = {}
+    for category, cls_dict in labels_prompt.items():
+        labels_emb[category] = {}
 
-    final_type_emb = {}
-    for cls_name, emb_text in labels_emb["type"].items():
-        all_embs = [emb_text]  # start with text prompt emb
+        for cls_name, content in cls_dict.items():
+            text = content["text"]
+            images = content.get("images", [])
 
-        if cls_name == "life":
-            for f in life_imgs:
-                all_embs.append(img_embs[f][None])
-        if cls_name == "pro":
-            for f in pro_imgs:
-                all_embs.append(img_embs[f][None])
-        if cls_name=='UNK':
-            for f in unk_imgs:
-                all_embs.append(img_embs[f][None])
+            # 文本 embedding
+            text_emb = embed_text_by_clip([text], device, model, processor)  # shape (1,512)
 
-        final_type_emb[cls_name] = np.vstack(all_embs)
+            # 图片 embedding
+            img_emb_list = []
+            for fname in images:
+                if fname in img_embs:
+                    img_emb_list.append(img_embs[fname][None])  # shape (1,512)
+                else:
+                    print(f"[WARNING] {fname} not found in {image_emb_path}")
 
-    # 覆盖原来的 type
-    labels_emb["type"] = final_type_emb
+            if img_emb_list:
+                img_emb_stack = np.vstack(img_emb_list)
+                all_emb = np.vstack([text_emb, img_emb_stack])  # text + images
+            else:
+                all_emb = text_emb
 
-    # ---- 4) 保存为 pkl（支持嵌套结构） ----
+            labels_emb[category][cls_name] = all_emb
+
+    # ---- 4) 保存为 pkl ----
     os.makedirs(os.path.dirname(labels_emb_path), exist_ok=True)
-
     with open(labels_emb_path, "wb") as f:
         pickle.dump(labels_emb, f)
 
     print(f"[SUCCES] labels text-image prompt embeded by {model_name} saved to {labels_emb_path}!\n")
-
-    return 
+    return labels_emb
 
 
 ##==========================================PREDICTION========================================
