@@ -27,40 +27,6 @@ def save_json(data, json_path):
     return 
 
 
-
-# def save_labels_text(labels_text_path="labels/labels_text.json"):
-#     type_labels = {
-#         "life": 
-#             "a photo of a person in a visible daily scene or some activities",
-#         "pro": 
-#             "a portrait or headshot,focused mainly on the face, with little or no background information.",
-#         "UNK": 
-#             "an image without any people or cannot determine whether it is lifestyle or portrait"
-#     }
-#     is_smiling_labels = {
-#         "1": "a person smiling visibly",
-#         "0": "a person not smiling",
-#         "UNK": "no person or cannot see their face"
-#     }
-#     sex_labels = {
-#         "M": "a photo of a man",
-#         "F": "a photo of a woman",
-#         "MIX": "a photo with multiple people of mixed gender",
-#         "UNK": "the gender of the person cannot be determined or no person present"
-#     }
-#     labels_text = {
-#         "type": type_labels,
-#         "is_smiling": is_smiling_labels,
-#         "sex": sex_labels   
-#     }
-#     os.makedirs(os.path.dirname(labels_text_path), exist_ok=True)
-
-#     with open (labels_text_path,"w", encoding='utf-8') as f :
-#         json.dump(labels_text, f, indent=2)
-#     print(f"[SUCCES] labels text saved to {labels_text_path}!")
-#     return 
-
-
 ##================================ EMBEDDINGS + FEW SHOT LABELS================================== 
 # device='cuda' if torch.cuda.is_available() else "cpu" 
 # model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
@@ -79,84 +45,12 @@ def embed_text_by_clip(text_list, device, model, processor):
         return text_features.cpu().numpy().astype("float32")
 
 
-##仅在改动时候重新embedding
-# labels_text_path="labels/labels_text.json",
-# labels_img_path="labels/labels_img.json",
-# def embed_labels_txt_img(labels_prompt_path='labels/labels_prompt.json',
-#                          image_emb_path="embeddings_SAMPLE/emb_SAMPLE.npz",
-#                          labels_emb_path="labels/labels_emb_txt-img.pkl"):
-#     print(f"======================EMBEDDING + FEW SHOT=======================\n") 
-
-
-#     # ---- 0) 
-#     device='cuda' if torch.cuda.is_available() else "cpu" 
-#     model_name="openai/clip-vit-base-patch32"
-#     model = CLIPModel.from_pretrained(model_name).to(device)
-#     processor = CLIPProcessor.from_pretrained(model_name)
-
-#     # ---- 1) 读取标签 ----
-#     labels_prompt=read_json(labels_prompt_path)
-
-#     # ---- 2) 对所有文本生成 embedding ----
-#     # labels_emb = {}
-#     # for category, dic in labels_text.items():
-#     #     texts = list(dic.values())
-#     #     # emb = embed_text_by_clip(texts)
-#     #     emb=embed_text_by_clip(texts, device, model, processor)
-#     #     # 按字典顺序对应回 keys
-#     #     labels_emb[category] = {
-#     #         cls_name: emb[i:i+1]
-#     #         for i, cls_name in enumerate(dic.keys())
-#     #     }
-
-#     # ---- 3) 给 “type” 类别加入 example images embeddings ----
-
-#     # 加载 image embeddings
-#     img_embs = np.load(image_emb_path)
-
-#     # 自己挑一些示例图片：
-#     # # life_imgs = ["106365215.jpg", "517697918.jpg"]
-#     # # pro_imgs  = ["102571900.jpg","71320446.jpg"]
-#     # # unk_imgs=["52801103.jpg","425502119.jpg"]
-
-#     # final_type_emb = {}
-#     # for cls_name, emb_text in labels_emb["type"].items():
-#     #     all_embs = [emb_text]  # start with text prompt emb
-
-#     #     if cls_name == "life":
-#     #         for f in life_imgs:
-#     #             all_embs.append(img_embs[f][None])
-#     #     if cls_name == "pro":
-#     #         for f in pro_imgs:
-#     #             all_embs.append(img_embs[f][None])
-#     #     if cls_name=='UNK':
-#     #         for f in unk_imgs:
-#     #             all_embs.append(img_embs[f][None])
-
-#     #     final_type_emb[cls_name] = np.vstack(all_embs)
-
-#     # # 覆盖原来的 type
-#     # labels_emb["type"] = final_type_emb
-
-#     # ---- 4) 保存为 pkl（支持嵌套结构） ----
-#     os.makedirs(os.path.dirname(labels_emb_path), exist_ok=True)
-
-#     with open(labels_emb_path, "wb") as f:
-#         pickle.dump(labels_emb, f)
-
-#     print(f"[SUCCES] labels text-image prompt embeded by {model_name} saved to {labels_emb_path}!\n")
-
-#     return 
-
-
-
-
 
 def embed_labels_txt_img(labels_prompt_path='labels/labels_prompt.json',
                          image_emb_path="embeddings_SAMPLE/emb_SAMPLE.npz",
                          labels_emb_path="labels/labels_emb_txt-img.pkl"):
     print(f"======================EMBEDDING TEXT + FEW SHOT IMG=======================\n") 
-
+    start_time_prompt=time.time()
     # ---- 0) 初始化 CLIP ----
     device='cuda' if torch.cuda.is_available() else "cpu" 
     model_name="openai/clip-vit-base-patch32"
@@ -201,8 +95,10 @@ def embed_labels_txt_img(labels_prompt_path='labels/labels_prompt.json',
     os.makedirs(os.path.dirname(labels_emb_path), exist_ok=True)
     with open(labels_emb_path, "wb") as f:
         pickle.dump(labels_emb, f)
+    end_time_prompt=time.time()
 
-    print(f"[SUCCES] labels text-image prompt embeded by {model_name} saved to {labels_emb_path}!\n")
+
+    print(f"[SUCCES] labels text-image prompt embeded by '{model_name}' saved to '{labels_emb_path}' : {end_time_prompt-start_time_prompt:.2f} sec!\n")
     return labels_emb
 
 
@@ -314,7 +210,7 @@ def predict_defaut_type_smile_sex(image_emb_path = "embeddings_SAMPLE/emb_SAMPLE
 # ------------------------
 # 识别 & 判断函数
 # ------------------------
-def get_quality_label(img_path, blur_threshold=100.0):
+def get_quality_label(img_path, blur_threshold=700.0):
     """
     根据图像是否模糊判断质量
     img_path: 图片路径
@@ -352,12 +248,13 @@ def detect_has_person(img_path):
         return "UNK"
 
 def detect_person_and_quality(
+        blur_threshold,
         images_folder="images_SAMPLE",
         detection_path="annotations_SAMPLE/detections.json"
     ):
     print(f"============================DETECTION===============================")
-    print(f"-has_person by yolo:'1'/'0',\n"
-          f"quality by Laplacian : high/low/UNK\n")
+    print(f"- has_person by yolo:'1'/'0',\n"
+          f"- quality by Laplacian : high/low/UNK\n")
     start_time=time.time()
 
     os.makedirs(os.path.dirname(detection_path), exist_ok=True)
@@ -374,7 +271,7 @@ def detect_person_and_quality(
         has_person = detect_has_person(fpath)
 
         # quality: size-based
-        quality = get_quality_label(fpath)
+        quality = get_quality_label(fpath, blur_threshold)
 
         records[fname] = {
             "has_person": has_person,
@@ -474,147 +371,299 @@ def merge_annotations(detection_path="annotations_SAMPLE/detections.json",
 
 
 ##==========================================EVALUATION========================================
+# def ls_to_dict(ls_json):
+#     """
+#     ls_json: list, LabelStudio 导出 json
+#     return: dict {filename: {dim:value}}
+#     """
+#     out = {}
+#     for item in ls_json:
+#         # 找到图片名
+#         fname = item.get("data", {}).get("filename") or item.get("file_upload")
+#         if not fname:
+#             continue
+        
+#         # 取第一条标注（annotations 可能有多人标注，取第一个即可）
+#         ann_list = item.get("annotations", [])
+#         if not ann_list:
+#             continue
+        
+#         ann_result = ann_list[0].get("result", [])
+#         labels = {}
+#         for r in ann_result:
+#             dim = r.get("from_name")
+#             value_dict = r.get("value", {})
+#             # choices 是 LabelStudio 默认格式
+#             if "choices" in value_dict and len(value_dict["choices"]) > 0:
+#                 labels[dim] = value_dict["choices"][0]
+#             else:
+#                 labels[dim] = "UNK"  # 没有标注就填 UNK
+
+#         out[fname] = labels
+#     return out
+
+
+def check_label_consistency(ls_annos, auto_annos):
+    """
+    检查 ground truth (ls_annos) 与 auto_annos 之间的分类标签是否一致。
+    
+    ls_annos: dict {filename: {dim:label}}
+    auto_annos: dict {filename: {dim:label}}
+
+    功能：
+    - 自动收集每个 dimension 在两者中的所有类别集合
+    - 如果不一致，打印 warning
+    - 返回 True(一致) or False(发现不一致)
+    """
+    print("=== Checking label consistency between ls_annos and auto_annos ===")
+
+    all_dims = set()
+    for d in ls_annos.values():
+        all_dims.update(d.keys())
+    for d in auto_annos.values():
+        all_dims.update(d.keys())
+
+    has_issue = False
+
+    for dim in sorted(all_dims):
+        # 收集 ls 中该维度的所有类别
+        ls_labels = set(
+            ann.get(dim, "UNK") for ann in ls_annos.values()
+        )
+
+        # 收集 auto 中该维度的所有类别
+        auto_labels = set(
+            ann.get(dim, "UNK") for ann in auto_annos.values()
+        )
+
+        # 检查是否一致
+        if ls_labels != auto_labels:
+            has_issue = True
+            print(f"\n [WARNING] Label mismatch in dimension: '{dim}'")
+            print(f"   LS annotations labels:   {sorted(ls_labels)}")
+            print(f"   Auto annotations labels: {sorted(auto_labels)}")
+
+            # 计算差异
+            only_in_ls = ls_labels - auto_labels
+            only_in_auto = auto_labels - ls_labels
+
+            if only_in_ls:
+                print(f"   → Labels only in LS (missing in auto): {sorted(only_in_ls)}")
+            if only_in_auto:
+                print(f"   → Labels only in Auto (missing in LS): {sorted(only_in_auto)}")
+
+            print("   Suggestion: Please check label names / mapping or CLIP text prompts.\n")
+
+    if not has_issue:
+        print("✓ All label sets match perfectly across all dimensions.\n")
+
+    return not has_issue
+
+
 
 def ls_to_dict(ls_json):
     """
     ls_json: list, LabelStudio 导出 json
     return: dict {filename: {dim:value}}
     """
+
+    # ------- NEW: type 标签映射 -------
+    type_mapping = {
+        "pro": "identity_style",
+        "life": "lifestyle",
+        "UNK": "UNK",
+        None: "UNK"
+    }
+
     out = {}
     for item in ls_json:
-        # 找到图片名
+        # 获取文件名
         fname = item.get("data", {}).get("filename") or item.get("file_upload")
         if not fname:
             continue
         
-        # 取第一条标注（annotations 可能有多人标注，取第一个即可）
         ann_list = item.get("annotations", [])
         if not ann_list:
             continue
         
         ann_result = ann_list[0].get("result", [])
         labels = {}
+
         for r in ann_result:
             dim = r.get("from_name")
             value_dict = r.get("value", {})
-            # choices 是 LabelStudio 默认格式
+
+            # 默认 UNK
             if "choices" in value_dict and len(value_dict["choices"]) > 0:
-                labels[dim] = value_dict["choices"][0]
+                raw_label = value_dict["choices"][0]
             else:
-                labels[dim] = "UNK"  # 没有标注就填 UNK
+                raw_label = "UNK"
+
+            # ------- NEW: 类型特定映射 -------
+            if dim == "type":
+                mapped_label = type_mapping.get(raw_label, "UNK")
+                labels[dim] = mapped_label
+            else:
+                labels[dim] = raw_label
 
         out[fname] = labels
+
     return out
 
 
-def summarize_classification(auto_annos, ls_annos, label_dims=None):
-        """
-        auto_annos: dict {filename: {dim: label}}
-        ls_annos: dict {filename: {dim: label}}  # ground truth
-        label_dims: list of dimensions to evaluate, e.g. ["type","quality",...]
-        F1:
-        宏平均 (macro)：每个类别 F1 平均 → 类别不平衡敏感
-        微平均 (micro)：全局 TP/FP/FN 计算 → 对样本量敏感
-        返回 DataFrame，可直接打印或保存 CSV
-        """
-        if label_dims is None:
-            # 从 ground truth 取所有维度
-            label_dims = list(next(iter(ls_annos.values())).keys())
+
+from sklearn.metrics import classification_report, f1_score
+import pandas as pd
+
+def summarize_classification(auto_annos, ls_annos, label_dims=None, verbose=True, low_flag_v=0.7):
+    """
+    auto_annos: dict {filename: {dim: label}}
+    ls_annos: dict {filename: {dim: label}}  # ground truth
+    label_dims: list of dimensions to evaluate
+    verbose: if True, print detailed classification report when low_performance_flag=True
+
+    F1:
+    宏平均 (macro)：每个类别 F1 平均 → 类别不平衡敏感
+    微平均 (micro)：全局 TP/FP/FN 计算 → 对样本量敏感
+    返回 DataFrame，可直接打印或保存 CSV
+
+    """
+    if label_dims is None:
+        label_dims = list(next(iter(ls_annos.values())).keys())
+
+    records = []
+
+    for dim in label_dims:
+        y_true = []
+        y_pred = []
+        unk_count = 0
+
+        for fname in ls_annos:
+            true_label = ls_annos[fname].get(dim, "UNK")
+            pred_label = auto_annos.get(fname, {}).get(dim, "UNK")
+
+            y_true.append(true_label)
+            y_pred.append(pred_label)
+
+            if true_label == "UNK":
+                unk_count += 1
+
+        # Metrics
+        macro_f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
+        micro_f1 = f1_score(y_true, y_pred, average='micro', zero_division=0)
+        acc = sum([t == p for t, p in zip(y_true, y_pred)]) / len(y_true)
+
+        low_flag = micro_f1 < low_flag_v
+
+        # 如果某个维度表现不好 → 打印详细分类情况
+        if verbose and low_flag:
+            print(f"\n----------------------------------------------")
+            print(f"⚠️  Low performance detected for DIMENSION: **{dim}**")
+            print(f"Accuracy={acc:.3f}, Macro-F1={macro_f1:.3f}, Micro-F1={micro_f1:.3f}")
+            print("----------------------------------------------")
+            print(classification_report(y_true, y_pred, zero_division=0))
         
-        records = []
-        
-        for dim in label_dims:
-            y_true = []
-            y_pred = []
-            unk_count = 0
-            for fname in ls_annos:
-                true_label = ls_annos[fname].get(dim, "UNK")
-                pred_label = auto_annos.get(fname, {}).get(dim, "UNK")
-                y_true.append(true_label)
-                y_pred.append(pred_label)
-                if true_label == "UNK":
-                    unk_count += 1
-            
-            # classification report
-            # report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
-            # macro f1
-            macro_f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
-            # micro f1
-            micro_f1 = f1_score(y_true, y_pred, average='micro', zero_division=0)
-            # accuracy
-            acc = sum([t==p for t,p in zip(y_true, y_pred)]) / len(y_true)
+        records.append({
+            "dimension": dim,
+            "accuracy": acc,
+            "macro_f1": macro_f1,
+            "micro_f1": micro_f1,
+            "UNK_count": unk_count,
+            "low_performance_flag": low_flag
+        })
 
-            records.append({
-                "dimension": dim,
-                "accuracy": acc,
-                "macro_f1": macro_f1,
-                "micro_f1":micro_f1,
-                "UNK_count": unk_count,
-                "low_performance_flag": micro_f1 < 0.7  # 标记 F1 < 0.7
-            })
-        
-        df_summary = pd.DataFrame(records)
-        return df_summary
+    return pd.DataFrame(records)
 
 
+# def evalate_clf(ls_annotations_path="annotations_SAMPLE/ls_annotations.json",
+#             auto_annotations_path="annotations_SAMPLE/auto_annotations.json"#y_pred
+#             ):
+#     ## evaluation of clip:
+#     print(f"==============================EVALUATION============================\n"
+#           f"ls_annotations : y_true,\n"
+#           f"auto_annotations:y_pred\n")
 
-def evalate_clf(ls_annotations_path="annotations_SAMPLE/ls_annotations.json",
-            auto_annotations_path="annotations_SAMPLE/auto_annotations.json"#y_pred
-            ):
-    ## evaluation of clip:
+#     #load annotations :
+#     ls_annotations_brut=read_json(ls_annotations_path)#y_true
+#     auto_annotations=read_json(auto_annotations_path)#y_pred
+
+#     # parse ls_annotations:
+#     ls_annotations = ls_to_dict(ls_annotations_brut)
+
+#     #summary:
+#     dims = ["is_default_pic","has_person","type", "quality","is_smiling","sex"]
+#     df_summary=summarize_classification(auto_annos=auto_annotations, ls_annos=ls_annotations, label_dims=dims)
+#     print("classification report:")
+#     display(df_summary)
+#     return 
+
+def evalate_clf(low_flag_v,
+                ls_annotations_path="annotations_SAMPLE/ls_annotations.json",
+                auto_annotations_path="annotations_SAMPLE/auto_annotations.json"):
+
     print(f"==============================EVALUATION============================\n"
           f"ls_annotations : y_true,\n"
           f"auto_annotations:y_pred\n")
 
-    #load annotations :
-    ls_annotations_brut=read_json(ls_annotations_path)#y_true
-    auto_annotations=read_json(auto_annotations_path)#y_pred
+    ls_annotations_brut = read_json(ls_annotations_path)
+    auto_annotations = read_json(auto_annotations_path)
 
-    # parse ls_annotations:
     ls_annotations = ls_to_dict(ls_annotations_brut)
+    check_label_consistency(ls_annotations, auto_annotations)
 
-    #summary:
     dims = ["is_default_pic","has_person","type", "quality","is_smiling","sex"]
-    df_summary=summarize_classification(auto_annos=auto_annotations, ls_annos=ls_annotations, label_dims=dims)
-    print("classification report:")
-    display(df_summary)
-    return 
+    df_summary = summarize_classification(low_flag_v=low_flag_v, 
+                                          auto_annos=auto_annotations,
+                                          ls_annos=ls_annotations,
+                                          label_dims=dims,
+                                          verbose=True
+                                          )
 
+    print(f"Classification summary: LOW performance flag <{low_flag_v}")
+    display(df_summary)
+
+    return 
 
 
 def autoclf(images_folder,
             image_emb_path,
-            labels_text_path, 
+            labels_prompt_path, 
             labels_emb_path,
             prediction_path,
             detection_path,
             auto_annotations_path,
-            ls_annotations_path):
+            ls_annotations_path,
+            blur_threshold=700,
+            low_flag_v=0.7, 
+            update_prompt=False):
     n_images=len([f for f in os.listdir(images_folder) if f.endswith('.jpg')])
 
     all_start_time=time.time()    
-
     # 无修改则不需要重新embedding:
-    # embed_labels_txt_img(labels_text_path,
-    #                      image_emb_path,
-    #                      labels_emb_path)
-
+    if update_prompt==True:
+        labels_emb=embed_labels_txt_img(labels_prompt_path,
+                            image_emb_path,
+                            labels_emb_path)
 
     predict_defaut_type_smile_sex(image_emb_path,
                                 labels_emb_path,
                                 prediction_path)
     
     detect_person_and_quality(
-            images_folder,
-            detection_path)
+                            blur_threshold,
+                            images_folder,
+                            detection_path)
     
-    merge_annotations(detection_path,
+    merge_annotations(
+                        detection_path,
                         prediction_path,
                         auto_annotations_path)
     
     if ls_annotations_path is not None:    
-        evalate_clf(ls_annotations_path,
-                    auto_annotations_path)    
+        evalate_clf(low_flag_v,
+                    ls_annotations_path,
+                    auto_annotations_path
+                    )    
     all_end_time=time.time()
     print(f"[PROCESS] Embeddings-> Prediction-> Detection-> Merge-> Evaluation \n"
         f"{n_images} images in {images_folder} :{all_end_time-all_start_time:.2f} sec! \n")
