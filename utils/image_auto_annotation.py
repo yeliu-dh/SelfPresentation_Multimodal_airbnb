@@ -665,6 +665,9 @@ def autoclf(images_folder,
                     auto_annotations_path
                     )    
     all_end_time=time.time()
+    #     # labels_prompt_path, 
+
+
     print(f"[PROCESS] Embeddings-> Prediction-> Detection-> Merge-> Evaluation \n"
         f"{n_images} images in {images_folder} :{all_end_time-all_start_time:.2f} sec! \n")
     return 
