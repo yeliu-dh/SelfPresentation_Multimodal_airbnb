@@ -226,8 +226,7 @@ def split_change_stable(df6, df9, year='2025'):
     print("CHANGE == new_host| reactive_host | host_about_change| host_pic_change")
     print(f"※ len change: {len(df_change)} | len new_host: {len(df_change[df_change['status']=='new_host'])}\n"
           f"※ len stable: {len(df_stable)} \n"
-          )
-    
+          f"df columns :\n {dfparisQ2.columns}\n")
     
 
     #房东市场行为变化统计：
@@ -253,7 +252,7 @@ def split_change_stable(df6, df9, year='2025'):
 
 
 
-def save_global_change_stable_csv(csv_files, year:str, location:str, output_folder="data_jo_processed"):
+def save_global_change_stable_csv(csv_files, ym:str, location:str, output_folder="data_jo_processed"):
     
     print("NB. csv files enter strictly in order : global-change-stable!")
     print(f"default output folder : {output_folder}")
@@ -262,11 +261,11 @@ def save_global_change_stable_csv(csv_files, year:str, location:str, output_fold
 
     for i, f in enumerate(csv_files):
         if i==0 :
-            output_path=f"{output_folder}\listings_jo_{location}{year}.csv"
+            output_path=f"{output_folder}\listings_jo_{location}{ym}.csv"
         elif i==1:
-            output_path=f"{output_folder}\listings_jo_{location}{year}_change.csv"
+            output_path=f"{output_folder}\listings_jo_{location}{ym}_change.csv"
         elif i==2:
-            output_path=f"{output_folder}\listings_jo_{location}{year}_stable.csv"
+            output_path=f"{output_folder}\listings_jo_{location}{ym}_stable.csv"
         f.to_csv(output_path, index=False)
         print(f"✔ csv saved in {output_path}!")
 
@@ -283,15 +282,7 @@ def save_global_change_stable_csv(csv_files, year:str, location:str, output_fold
 
 
 
-
-
-
-
-
-
-
-
-
+### 10/12/25前的V0，被preprocess_listings取代：处理各种变量+筛选
 
 ##=============================DESC STAT=====================================##
 
@@ -345,22 +336,35 @@ def detect_language_langid(text):
 
 
 
-def preprocess_host_variables(df):
+
+
+
+def print_nan_ratio(df, col):
+    ratio = (df[col].value_counts(dropna=False) / len(df)).round(2)
+    nan_ratio = ratio.get(np.nan, 0)   # 如果没有 NaN，就返回 0
+    # print(f"- ratio nan in '{col}': {nan_ratio}!")
+    return nan_ratio
+
+
+
+def preprocess_host_variables(df_raw):
+    df=df_raw.copy()
     
     var_ok=["host_has_profile_pic","host_picture_url","host_identity_verified","host_name","number_of_reviews"]
 
     var_toprocess=["host_is_superhost","review_scores_rating", "host_since","host_about",
                 "host_response_time","host_response_rate","calculated_host_listings_count"]
     
+     
     print(f"\n\n******************************HOST VARS******************************\n"
           f"PROCESS METHODS :\n"
           f"- host_is_sueprhost: fillna('f')\n"
-          f"- review_scores_rating: 缺失严重，新增一列, 'has_rating:1/0'\n"
-          f"- host_since: 新增1列years_since_host :float, 按照ab页面显示计算年数，0.5-1年填1， 0-0.5年填0 \n"
-          f"- has_host_about:新增3列'has_host_about:1/0','lang:en/fr/other_langs','len:int',\n"
-          f"- host_response_time: fillna('no_response_time') \n"
-          f"- host_response_rate:缺失严重，增加一列has_response_rate:1/0， fillna(0)\n"
-          f"- calculated_host_listings_count : 新增1列'professional_host:1/0'\n"
+          f"- review_scores_rating: {print_nan_ratio(df, col='review_scores_rating')*100}% NaN, ADD 'has_rating' :1/0'\n"
+          f"- host_since: ADD 'years_since_host' :float, 0.5-1 year=>1， 0-0.5 year => 0 \n"
+          f"- has_host_about: ADD 'has_host_about':1/0','lang:en/fr/other_langs','len:int',\n"
+          f"- host_response_time:{print_nan_ratio(df, col='host_response_time')*100}% NaN, fillna('no_response_time') \n"
+          f"- host_response_rate:{print_nan_ratio(df, col='host_response_rate')*100}% NaN, ADD 'has_response_rate' :1/0， fillna(0)\n"
+          f"- calculated_host_listings_count : ADD 'professional_host:1/0'\n"
           )
     
     for var in var_toprocess:
