@@ -23,7 +23,10 @@ def print_zero_ratio(df, col):
 
 def desc_catORnum(df, vars):
 
-    print("================= BALN PROCESSED VARIABLES =====================")
+    print("\n================= BALN PROCESSED VARIABLES =====================\n"
+        f"[INFO] statictic description on df ({len(df)} lines):\n"
+        f"{' ; '.join(vars)}\n")
+    
     
     for var in vars:
         if not var in df:
@@ -81,6 +84,8 @@ def detect_language_langid(text):
 
     except Exception:
         return "unk"  # 检测失败的情况
+
+
 
 
 
@@ -237,7 +242,6 @@ def preprocess_host_variables(df_raw):
 
 ##==================================PROXY============================================##
 
-
 def filter_by_proxy(df,proxy_vars=['price',"availability_90"], get_boooking_rate_l30d=True):
     print(
         f"\n\n==============================PROXY=============================\n")
@@ -251,8 +255,7 @@ def filter_by_proxy(df,proxy_vars=['price',"availability_90"], get_boooking_rate
                 df['price']
                 .replace('[\$,]', '', regex=True)  # 去掉 $ 和 ,
                 .astype(float)                     # 转成数值
-            )
-            
+            )            
             
     if get_boooking_rate_l30d==True:
         print(
@@ -289,8 +292,7 @@ def filter_by_proxy(df,proxy_vars=['price',"availability_90"], get_boooking_rate
 
 ##==================================LOCATION============================================##
 
-def add_is_within_km(df, threshold_km=3):
-    
+def add_is_within_km(df, threshold_km):
     venues_df = pd.DataFrame([
         {"venue": "Stade de France", "lat": 48.9244, "lon": 2.3601},
         {"venue": "Paris Aquatic Centre", "lat": 48.9235, "lon": 2.3554},   # 根据维基坐标 :contentReference[oaicite:1]{index=1}
@@ -353,9 +355,10 @@ def add_is_within_km(df, threshold_km=3):
 # 描述！
 
 def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_90"], 
-                        get_boooking_rate_l30d=True, filtrate_by_booking_rate=True, 
+                        get_boooking_rate_l30d=False, filtrate_by_booking_rate=False,#无输入时默认不按照booking筛选 
                         obj_vars=["room_type", "minimum_nights","instant_bookable"], 
-                        threshold_km=None):
+                        threshold_km:int=None, 
+                        output_folder="mod_results", filename=None):
     # obj_vars=["room_type", "minimum_nights","instant_bookable"]#all ok,无缺失/异常
     # proxy_vars=['price',"availability_90"]
     
@@ -371,16 +374,16 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
         f" if availability_30 = 0, take NaN.\n"
         f" if booking_rate_l30d > 1, take 1.\n\n"
         
-        f"2) desc statistique :{', '.join(obj_vars)} \n\n"
+        f"3) desc statistique :{', '.join(obj_vars)} \n\n"
         
-        f"3) if enter 'threshold_km':\n"
+        f"4) if enter 'threshold_km':\n"
         f"location :'latitude','longitude': ADD 'is_within_Xkm'\n"
         f"calculate  distance bewtween listing and its cloest venue. if it's under {threshold_km} km, 'is_within_{threshold_km} km' ==1, else 0.\n"
         )
     all_vars=[]
     
                 
-    # proxy
+    # ---------------------------proxy-----------------------
     df, df_filtered=filter_by_proxy(df, proxy_vars=proxy_vars, get_boooking_rate_l30d=get_boooking_rate_l30d)
     all_vars.extend(proxy_vars)
     
@@ -394,26 +397,32 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
     if get_boooking_rate_l30d==True:
         all_vars.extend(['number_of_reviews_l30d',"booking_rate_l30d"])#?
     
-    # obj vars :
+    #---------------------- obj vars ------------------------
     if "instant_bookable" in obj_vars:
         df["instant_bookable"]=df["instant_bookable"].fillna("f")
    
     all_vars.extend(obj_vars)
     
-    # location:
+    # -----------------------location----------------------
     if threshold_km!=None:    
         df_filtered=add_is_within_km(df_filtered,threshold_km=3)
         all_vars.append(f'is_within_{threshold_km}km')
         
-       
-    print(f"[INFO] statictic description on df_filtrered ({len(df_filtered)} lines):\n"
-          f"{' ; '.join(all_vars)}\n")
-    
+    # desc
     desc_catORnum(df_filtered, vars=all_vars) 
-
-
-        
+    
+    # save
+    os.makedirs(output_folder, exist_ok=True)
+    if filename is None:
+        filename="listings_filtered.csv"
+    outpath_df_filtered=os.path.join(output_folder, filename)
+    df_filtered.to_csv(outpath_df_filtered, index=False)
+    print(f"\n✅[SAVE] df_filtered saved to {outpath_df_filtered}!")
+    
     return df_filtered
+
+
+
 
 
 
@@ -432,6 +441,9 @@ def save_csv_as_latex(table_csv, output_path,caption, label):
     return 
 
 
+
+
+## =================================profil comparaison=======================================##
 
 def group_mean_table(df, cols, group_col='host_is_superhost'):
     """
@@ -455,19 +467,28 @@ def group_mean_table(df, cols, group_col='host_is_superhost'):
 
 
 
-def group_mean_table_ttest(df, cols, group_col='host_is_superhost', output_folder="mod_results"):
+def group_mean_table_ttest(df, cols, group_col='host_is_superhost', output_folder="desc_results"):
 
     """
     返回均值表 + t-test p-value列
     """
     from scipy.stats import ttest_ind
+    
+    print(f"[INFO] ttest on {len(df)} lines.\n"
+          f"group by : {df[group_col].value_counts(dropna=False)}\n")
+    
+    # filter valid cols:
+    cols_valid=[col for col in cols if col in df.columns]
+    cols_missing=[col for col in cols if col not in cols_valid]
 
+    print(f"[WARNING]{len(cols_missing)} missing cols in df_input :\n {'; '.join(cols_missing)}\n")
+    
     # 或者只筛选非数值列
-    non_numeric_cols = [c for c in cols if not pd.api.types.is_numeric_dtype(df[c])]
+    non_numeric_cols = [c for c in cols_valid if not pd.api.types.is_numeric_dtype(df[c])]
     if len(non_numeric_cols)>0:
         print(f"[WARNING] non_numeric_cols:\n {'; '.join(non_numeric_cols)}\n")
     
-    numeric_cols=[c for c in cols if c not in non_numeric_cols]
+    numeric_cols=[c for c in cols_valid if c not in non_numeric_cols]
     print(f"Table of Superhost and others in {len(numeric_cols)} dimensions:\n")
     
     
@@ -496,7 +517,11 @@ def group_mean_table_ttest(df, cols, group_col='host_is_superhost', output_folde
             sig = ''
         result.loc[col, 'significance'] = sig
     # result=result.sort_values(by="ttest_p", ascending=True)
+    
+    
+    
     # save csv and latex:
+    os.makedirs(output_folder, exist_ok=True)
     outpath_latex=os.path.join(output_folder, 'table_host_latex.tex')
     
     outpath_csv=os.path.join(output_folder, 'table_host.csv')    
@@ -508,90 +533,10 @@ def group_mean_table_ttest(df, cols, group_col='host_is_superhost', output_folde
                       caption="Tableau du profil des Superhôtes et des Autres",
                       label="tab:table_host")
 
-
-     
     
     return result
 
 
-# def check_vif (df,x_vars, y_var):
-#     from statsmodels.stats.outliers_influence import variance_inflation_factor
-#     from patsy import dmatrices    
-#     # 确保因变量不在自变量里
-#     if y_var in x_vars:
-#         x_vars.remove(y_var)
-    
-#     # # 把数值型和类别型分开：
-#     # for var in x_vars :
-#     #     if len(df[df[var].isna()])!=0:#不够稳健,检查不出空字符串和"nan"?
-#     #         print(f'[warning] {var} has nan!!')
-#     for var in x_vars:
-#         s = df[var]
-#         missing = s.isna() | (s.astype(str).str.strip() == '') | (s.astype(str).str.lower() == 'nan')
-#         # 同时检测：NaN, 空字符串, 'nan' 字符串
-#         if missing.any():
-#             print(f'[warning] {var} has {missing.sum()} missing values!')
-
-#     # non_numeric_x = [c for c in x_vars if not pd.api.types.is_numeric_dtype(df[c])]
-#     # numeric_x=[c for c in x_vars if c not in non_numeric_x]
-
-#     # print(f"[INFO] non_numeric_cols :{'; '.join(non_numeric_x)}\n"
-#     #         f"[INFO] numeric_cols :{'; '.join(numeric_x)}\n")
-
-#     # formula = y_var + ' ~ ' + ' + '.join(numeric_x + [f'C({v})' for v in non_numeric_x])
-    
-#     # y, X = dmatrices(formula, data=df, return_type='dataframe')
-    
-#     # # 计算 VIF
-#     # vif_df = pd.DataFrame()
-#     # vif_df['Variables'] = X.columns
-#     # vif_df['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
-#     # display(vif_df)
-    
-#     # return vif_df     
-def check_vif(df, x_vars, y_var):
-    from statsmodels.stats.outliers_influence import variance_inflation_factor
-    from patsy import dmatrices
-    import pandas as pd
-
-    df = df.copy()
-
-    if y_var in x_vars:
-        x_vars.remove(y_var)
-
-    # 检查缺失值（更稳健）
-    for var in x_vars:
-        s = df[var]
-        missing = s.isna() | (s.astype(str).str.strip() == '') | (s.astype(str).str.lower() == 'nan')
-        if missing.any():
-            print(f'[warning] {var} has {missing.sum()} missing values!')
-
-    # 分类/数值区分
-    numeric_x = [c for c in x_vars if pd.api.types.is_numeric_dtype(df[c])]
-    non_numeric_x = [c for c in x_vars if c not in numeric_x]
-
-    print(f"[INFO] numeric_cols : {numeric_x}")
-    print(f"[INFO] non_numeric_cols : {non_numeric_x}")
-
-    # 填充缺失值
-    df[numeric_x] = df[numeric_x].fillna(0)
-    for c in non_numeric_x:
-        df[c] = df[c].fillna('missing')
-
-    # 公式
-    # formula = y_var + ' ~ ' + ' + '.join(numeric_x + [f'C({v})' for v in non_numeric_x])
-    formula = y_var + ' ~ ' + ' + '.join(numeric_x + [f'C({v})' for v in non_numeric_x])
-
-    # dmatrices
-    y, X = dmatrices(formula, data=df, return_type='dataframe')
-
-    # VIF
-    vif_df = pd.DataFrame()
-    vif_df['Variables'] = X.columns
-    vif_df['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
-
-    display(vif_df)
-    return vif_df
 
 
 
@@ -602,58 +547,12 @@ def check_vif(df, x_vars, y_var):
 
 
 
-from patsy import dmatrices
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-import pandas as pd
-import re
-from patsy import dmatrices
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-import pandas as pd
 
-def check_vif_safe(df_input, x_vars, y_var):
-    import re
-    df = df_input.copy()
 
-    if y_var in x_vars:
-        x_vars = [v for v in x_vars if v != y_var]
 
-    numeric_x = []
-    cat_x = []
-    for c in x_vars:
-        if pd.api.types.is_numeric_dtype(df[c]):
-            numeric_x.append(c)
-        else:
-            cat_x.append(c)
 
-    # 去掉只含一个值的列
-    numeric_x = [c for c in numeric_x if df[c].nunique() > 1]
-    cat_x = [c for c in cat_x if df[c].nunique() > 1]
 
-    # 填充缺失值
-    df[numeric_x] = df[numeric_x].fillna(0)
-    for c in cat_x:
-        df[c] = df[c].fillna('missing')
-    
-    # 自动处理列名是否合法
-    def make_safe_col(col):
-        if re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', col):
-            return col
-        else:
-            return f'`{col}`'
 
-    # 生成 formula
-    formula = y_var + ' ~ ' + ' + '.join(numeric_x + [f'C({make_safe_col(v)})' for v in cat_x])
-    print(f"FORMULA {formula}")
-    # 生成矩阵
-    y, X = dmatrices(formula, data=df, return_type='dataframe')
-
-    # 计算 VIF
-    vif_df = pd.DataFrame()
-    vif_df['Variables'] = X.columns
-    vif_df['VIF'] = [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
-
-    display(vif_df)
-    return vif_df
 
 
 # def compute_booking_rate(row):

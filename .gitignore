@@ -3,8 +3,11 @@ sandbox/*
 sanboxJO/*
 logs/*
 
+
 # data
-A_preprocess/data_*
+A_preprocess/data_jo_*
+A_preprocess/sandboxPREPROCESS/*
+
 B_images/images_*/*
 B_images/embeddings/*
 B_images/embeddings_*/*

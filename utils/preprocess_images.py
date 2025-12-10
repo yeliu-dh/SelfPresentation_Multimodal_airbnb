@@ -154,7 +154,6 @@ import pandas as pd
 import time
 from tqdm import tqdm
 
-
 def ls_import_data(df,folder='images_TEST'):
     start_time=time.time()
 
@@ -203,9 +202,6 @@ def ls_import_data(df,folder='images_TEST'):
     print(f"[SUCCESS] JSON filename:url saved to {output_path}, total {len(records)} items: {end_time-start_time:.2f} sec!\n")
     
     return 
-
-
-
 
 
 
@@ -269,16 +265,6 @@ def split_copy (sampled_df, RAW_DIR = "images_raw", TEST_DIR = "images_TEST", TR
         ls_import_data(sampled_df,folder)
 
     return
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -351,6 +337,7 @@ def embed_folder(model, processor, device, folder_path, save_path):
     save_npz(save_path, embeddings)
     return list(embeddings.keys())
 
+
 def embed_images_save_mapping(model, processor, device, images_folders=["images_TEST","images_TRAIN","images_POOL"], embeddings_folder='embeddings'):
     """
     folder : embeddings
@@ -385,26 +372,6 @@ def embed_images_save_mapping(model, processor, device, images_folders=["images_
     print(f"[SUCCES] All embeddings saved and mapped: {end_time-start_time:.2f} sec!")
 
 
-
-
-##=============================PARSE MANUEL ANNOTATIONS================================================##
-import json
-import pandas as pd
-
-# with open("label_studio_export.json") as f:
-#     data = json.load(f)
-
-# rows = []
-# for item in data:
-#     filename = item["data"]["filename"]
-#     res = item["annotations"][0]["result"]
-#     row = {"filename": filename}
-#     for r in res:
-#         row[r["from_name"]] = r["value"]["choices"][0]
-#     rows.append(row)
-
-# df_labels = pd.DataFrame(rows)
-# print(df_labels.head())
 
 
 
