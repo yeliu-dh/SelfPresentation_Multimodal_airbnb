@@ -1,12 +1,13 @@
 # draft
-sandbox/*
 sanboxJO/*
-logs/*
+
+## data+output
+data*/*
+output*/*
+
 
 
 # data
-A_preprocess/data_jo_*
-A_preprocess/sandboxPREPROCESS/*
 
 B_images/images_*/*
 B_images/embeddings/*

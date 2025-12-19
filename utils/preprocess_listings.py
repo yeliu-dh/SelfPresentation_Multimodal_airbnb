@@ -6,8 +6,7 @@ import os
 import time
 import numpy as np
 import time
-
-
+# from utils.io import save_csv_as_latex
 
 ##=============================DESC STAT=====================================##
 
@@ -68,8 +67,32 @@ def desc_catORnum(df, vars):
 
 
 ##==================================HOST VARS============================================##
-
 import langid #这个库速度更快、稳定性高。
+
+def is_valid_text(text):
+    """
+    filtrer les textes:
+        pas de nan,
+        pas que les ponctuation,
+        pas que les liens url
+        pas que les caractères
+    renvoyer T/F
+    """
+        if pd.isna(text):  # ==dropnaNaN
+            return False
+        text = str(text).strip()
+        if len(text) == 0:  # strip
+            return False
+        # effacer ce qui n'a que de ponctuation
+        if not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", text):
+            return False
+         # effacer url
+        if re.fullmatch(r"https://\S+", text):
+            return False
+        return True
+
+
+
 def detect_language_langid(text):
     try:
         if isinstance(text, str) and text.strip():
@@ -87,9 +110,6 @@ def detect_language_langid(text):
 
 
 
-
-
-
 def preprocess_host_variables(df_raw):
     start_time=time.time()
    
@@ -103,12 +123,13 @@ def preprocess_host_variables(df_raw):
           f"- host_has_profile_pic : fillna('f') if not f/t\n"
           f"- host_identity_verified: fillna('f') if not f/t \n"
           f"- host_is_sueprhost: check ONLY 't'/'f'; fillna('f')\n"
-          f"- review_scores_rating: {print_nan_ratio(df, col='review_scores_rating')*100}% NaN; fillna(mean), to numeric; ADD 'has_rating' :1/0'\n"
+          f"- review_scores_rating: {print_nan_ratio(df, col='review_scores_rating')*100}% NaN; fillna(mean), to numeric; ADD 'has_rating' \n"
           f"- host_since: ADD 'years_since_host' :float, 0.5-1 year=>1， 0-0.5 year => 0 \n"
-          f"- has_host_about: ADD 'has_host_about':1/0','lang:en/fr/other_langs','len:int',\n"
+          f"- has_host_about: 'lang:en/fr/other_langs','len:int',\n"
+        #   ADD 'has_host_about':1/0',
           f"- host_response_time:{print_nan_ratio(df, col='host_response_time')*100}% NaN, fillna('no_response_time') \n"
           f"- host_response_rate:{print_nan_ratio(df, col='host_response_rate')*100}% NaN, ADD 'has_response_rate' :1/0， fillna(0)\n"
-          f"- calculated_host_listings_count : ADD 'professional_host:1/0'\n"
+          f"- calculated_host_listings_count : ADD 'professional_host:1/0', count>1\n"
           )
     
     
@@ -210,7 +231,7 @@ def preprocess_host_variables(df_raw):
     var_processed=["host_is_superhost",
                 "review_scores_rating","has_rating", 
                 "host_since","years_since_host",
-                "host_about","has_host_about", "lang","len",
+                "host_about", "lang","len", #"has_host_about"
                 "host_response_time",
                 "host_response_rate","has_response_rate",
                 "calculated_host_listings_count", "professional_host"]
@@ -225,15 +246,6 @@ def preprocess_host_variables(df_raw):
     # desc_catORnum(df, vars=var_processed)
     desc_catORnum(df, vars=impo_vars)
 
-    # for var in var_processed:
-    #     print(df[var].dtype)
-    #     if df[var].dtype =="int64" or df[var].dtype =="float64":#!="object"
-    #         print(df[var].describe(include='all'),"\n")
-    #     else :             
-    #         print(df[var].value_counts(dropna=False).sort_values(ascending=False),"\n")
-    #     print("-----------------------------------------------------------")
-
-
     # delect intermidate cols:optionnal
     # intermediate_cols=[]
     df=df.drop(columns=['days_since_host'])#?
@@ -241,10 +253,7 @@ def preprocess_host_variables(df_raw):
     end_time=time.time()
     print(f"\n✅[SUCCES] Process host variables : {end_time-start_time:.2f} sec!\n")
     
-
     return df
-
-
 
 
 
@@ -259,8 +268,15 @@ def preprocess_host_variables(df_raw):
 
 def filter_df(df, vars):
     df_filtered=df.copy()
-        
-    for var in vars :
+
+    # check vars :
+    vars_valid=[v for v in vars if v in df.columns ]
+    missings_vars=[v for v in vars if v not in vars_valid]
+    if len(missings_vars)>0:
+        print(f"[WARNING] missing vars in df : {'; '.join(missings_vars)}!!")
+    
+    # filter df
+    for var in vars_valid :
         len_before=len(df_filtered)
         df_filtered=df_filtered[df_filtered[var].notna()]
         len_after=len(df_filtered)
@@ -270,6 +286,7 @@ def filter_df(df, vars):
         f"len AFTER: {len(df_filtered)}\n")
    
     return df_filtered
+
 
 
 
@@ -309,7 +326,7 @@ def check_proxy_vars(df,proxy_vars=['price',"availability_90"], get_boooking_rat
 
 
 
-##==================================LOCATION============================================##
+##=======================================LOCATION============================================##
 
 def add_is_within_km(df, threshold_km):
     venues_df = pd.DataFrame([
@@ -369,11 +386,6 @@ def add_is_within_km(df, threshold_km):
     return df
 
 
-##==================================OBJ VAR ============================================##
-# 集合proxy+location处理
-# 描述！
-
-
 ##property type
 def categorize_property(ptype):
     if pd.isna(ptype) or str(ptype).strip() == "":
@@ -395,15 +407,19 @@ def categorize_property(ptype):
         return "others"
 
 
+###======================================MAIN==================================================###
+##==================================PROXY +OBJ+LOCATION ======================================##
+
 def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_90"], 
                         get_boooking_rate_l30d=False, filtrate_by_booking_rate=False,#无输入时默认不按照booking筛选 
                         obj_vars=["room_type", 'property_type',"minimum_nights","instant_bookable"], 
                         threshold_km:int=None, 
-                        output_folder="mod_results", filename=None):
+                        cols_to_keep=None,
+                        output_folder="mod_results", filename="listings_filtered.csv"):
     # obj_vars=["room_type", "minimum_nights","instant_bookable"]#all ok,无缺失/异常
     # proxy_vars=['price',"availability_90"]
     
-    print(f"\n\n==========================PROXY + OBJ VARS==========================\n"
+    print(f"\n\n==========================PROXY + OBJ VARS============================\n"
         f"PROCESS PIPELINE :\n"
         f"1) process proxies : \n"
         f"- price : delete '$', to_numeric\n"
@@ -417,7 +433,7 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
         f"3) obj vars :\n "
         f"- instant_bookable : fillna('f')\n"
         f"- minimum_nights : to_numeric, fillna(0)\n"
-        f"- property_type : ADD 'property_type_cat': entire, hotel, shared, private, others.\n"
+        f"- property_type : clean col : entire, hotel, shared, private, others.\n"
         
         
         f"3) filter : dropna on vars ==> desc df_filtered \n\n"
@@ -429,9 +445,10 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
         )
     vars_to_dropna=[]    
      
-    print("# ---------------------------proxy-----------------------")
+    print("# ---------------------------proxy---------------------------")
     
-    df, proxy_vars=check_proxy_vars(df, proxy_vars=proxy_vars, get_boooking_rate_l30d=get_boooking_rate_l30d)
+    df, proxy_vars=check_proxy_vars(df, proxy_vars=proxy_vars, 
+                                    get_boooking_rate_l30d=get_boooking_rate_l30d)
     vars_to_dropna.extend(proxy_vars)
     
     # all_vars.extend(proxy_vars)    
@@ -444,7 +461,7 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
     # if get_boooking_rate_l30d==True:
     #     all_vars.extend(['number_of_reviews_l30d',"booking_rate_l30d"])#?
     
-    print("#---------------------- obj vars ------------------------")
+    print("#------------------------ obj vars ---------------------------")
     if "instant_bookable" in obj_vars:
         df["instant_bookable"]=df["instant_bookable"].fillna("f")
         
@@ -462,33 +479,43 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
         2.1                    1
         Name: count, dtype: int64        
         """
-    
         df['room_type']=df['room_type'].apply(lambda x : x if x in ['Entire home/apt',"Private room","Hotel room", "Shared room"] else None)           
-        
         
     if "property_type" in obj_vars:
         df["property_type"] = df["property_type"].apply(categorize_property)
-
         
     vars_to_dropna.extend(obj_vars)
     
+
     if threshold_km!=None:    
-        print('# -----------------------location------------------------')
+        print('#-------------------------location------------------------')
         df=add_is_within_km(df,threshold_km=3)
-        vars_to_dropna.extend(f'is_within_{threshold_km}km')
+        vars_to_dropna.append(f'is_within_{threshold_km}km')# extend (list)!        
         
-    print("# --------------------filter & desc----------------------")
+        
+    print("# -----------------------filter & desc-------------------------")
     vars_to_dropna=list(set(vars_to_dropna))
+    print(f"[INFO] vars to dropna:{'; '.join(vars_to_dropna)}")
+    
     df_filtered=filter_df(df,vars=vars_to_dropna)
     desc_catORnum(df=df_filtered, vars=vars_to_dropna) 
+
     
+    if cols_to_keep:
+        print("# -----------------------simplify df------------------------")
+        cols_to_keep_valid = [c for c in cols_to_keep if c in df_filtered.columns]
+        cols_to_keep_missing = [c for c in cols_to_keep if c not in cols_to_keep_valid]
+        if len(cols_to_keep_missing)>0:
+            print(f"[INFO] skip missing cols to keep :{'; '.join(cols_to_keep_missing)}!")
+    
+        df_filtered=df_filtered[cols_to_keep_valid]
+        print(f"[INFO] df only keeps {df_filtered.columns}!")
+        
     # save
     os.makedirs(output_folder, exist_ok=True)
-    if filename is None:#不指定名字则用默认名字listings_filtered
-        filename="listings_filtered.csv"
     outpath_df_filtered=os.path.join(output_folder, filename)
     df_filtered.to_csv(outpath_df_filtered, index=False)
-    print(f"\n✅[SAVE] {len(df_filtered)} lines df_filtered saved to {outpath_df_filtered}!")
+    print(f"\n✅[SAVE] {len(df_filtered)} lines df_filtered saved to '{outpath_df_filtered}'!")
     
     return df_filtered
 
@@ -497,24 +524,30 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
 
 
 
-def save_csv_as_latex(table_csv, output_path,caption, label):
-    latex_code = table_csv.round(3).to_latex(
-            caption=caption,
-            label=label,
-            index=True,        # 是否保留行索引（item 名称）
-            escape=False       # False 可以保留 LaTeX 特殊字符，比如 _ 等
-        )
-    # print(f"LATEX : \n {latex_code}")
-    with open(output_path, 'w') as f:
-        f.write(latex_code)
-    print(f"[SAVE] table latex saved to {output_path}!\n")   
+# def get_df_unique(df, dropby:str, 
+#                 save, output_folder, filename):
+#     df_unique=df.copy()
+#     df_unique=df_unique.dropna(subset=dropby).drop_duplicates(subset=dropby)
+
+#     print(f"[INFO] df BEFORE dropna + drop duplicates: {len(df)};\n"
+#       f"AFTER : {len(df_unique)}")
+
+#     if save :
+#         os.makedirs(output_folder, exist_ok=True)
+#         if not filename:
+#             filename='listings_unique.csv'
+
+#         outpath_df_unique=os.path.join(output_folder, filename)
+#         df_filtered.to_csv(outpath_df_filtered, index=False)
+#         print(f"\n✅[SAVE] {len(df_unique)} lines df_filtered saved to '{outpath_df_unique}'!")
     
-    return 
+
+#     return df_unique
 
 
 
 
-## =================================profil comparaison=======================================##
+## ======================================DESC================================================##
 
 def group_mean_table(df, cols, group_col='host_is_superhost'):
     """
@@ -539,51 +572,73 @@ def group_mean_table(df, cols, group_col='host_is_superhost'):
 
 
 
-def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
-                           output_folder="mod_results"):
 
-    os.makedirs(output_folder, exist_ok=True)     
+def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
+                           save=False, output_folder="mod_results", filename_noext=None):
     from scipy.stats import ttest_ind
+
+    if save and output_folder:
+        os.makedirs(output_folder, exist_ok=True)     
     
     if group_col in cols_to_check :
         cols_to_check.remove(group_col)
-        
-    # check :
-    print(f"[INFO] ttest on {len(df)} lines.\n"
-          f"group by : {df[group_col].value_counts(dropna=False)}\n")
+        print(f"[CHECK] remove group_col '{group_col}' from vars")
+
+
+    # ------------------------------------check groups----------------------------------
+    groups = df[group_col].unique()
+    print(f"[CHECK] ttest takes only 2 groups! OR go to ANOVA!")
+
+    if len(groups) != 2:
+        # raise ValueError("ttest requires exactly 2 groups")
+        print(f"[WARNING] more than 2 groups!")
+
+    g1, g2 = groups[:2]
+    print(f'[INFO] groups :{g1} vs {g2}')    
     
-        
-    # filter valid cols:
+    #--------------------------------filter+ desc-----------------------------------------
+    print(f"[INFO] ttest on {len(df)} lines.\n"
+        #   f"group by : {df[group_col].value_counts(dropna=False)}\n"
+    )        
+    # 变量存在？
     cols_valid=[col for col in cols_to_check if col in df.columns]
     cols_missing=[col for col in cols_to_check if col not in cols_valid]
     if len(cols_missing)>0:
         print(f"[WARNING]{len(cols_missing)} missing cols in df_input :\n {'; '.join(cols_missing)}\n")
     
-    # 或者只筛选非数值列
-    print(f"[INFO] ttest take ONLY numeric cols! \n")
+    # 变量为数值？
+    print(f"[CHECK] ttest take ONLY numeric cols! \n")
     non_numeric_cols = [c for c in cols_valid if not pd.api.types.is_numeric_dtype(df[c])]
-    if len(non_numeric_cols)>0:
-        print(f"[CHECK] no numeric cols:\n {'; '.join(non_numeric_cols)}\n")
-    
     numeric_cols=[c for c in cols_valid if c not in non_numeric_cols]
-    print(f"Table of Superhost and others in {len(numeric_cols)} dimensions:\n {'; '.join(numeric_cols)}\n")
+
+    if len(non_numeric_cols)>0:
+        print(f"[WARNING] no numeric cols:\n {'; '.join(non_numeric_cols)}\n")
+       
     
-    
-    ## init res df
-    result = pd.DataFrame(index=numeric_cols, columns=['Superhôte', 'Autres', 'ttest_p'])
+    #---------------------------------- init result df------------------------------------
+    # 一次性声明清楚
+    result = pd.DataFrame(
+        index= ['proportion'] + list(numeric_cols),
+        columns=[g1, g2, 'ttest_p', 'significance']
+    )
+    result.columns.name = group_col # 左上角标记分组变量
+
+    # proportions
+    result.loc['proportion', g1] = (df[group_col] == g1).mean()
+    result.loc['proportion', g2] = (df[group_col] == g2).mean()
+
+    # loop over numeric columns
     for col in numeric_cols:
-        group1 = df[df[group_col]=='t'][col].dropna()
-        group2 = df[df[group_col]!='t'][col].dropna()
-        
-        result.loc[col, 'Superhôte'] = group1.mean()
-        result.loc[col, 'Autres']   = group2.mean()
-        
-        # t-test
-        _, p = ttest_ind(group1, group2, equal_var=False)  # Welch t-test
+        x1 = df.loc[df[group_col] == g1, col].dropna()
+        x2 = df.loc[df[group_col] == g2, col].dropna()
+
+        result.loc[col, g1] = x1.mean()
+        result.loc[col, g2] = x2.mean()
+
+        _, p = ttest_ind(x1, x2, equal_var=False)
         result.loc[col, 'ttest_p'] = p
-    
-  
-        # 显著性星号
+
+        # significance
         if p < 0.001:
             sig = '***'
         elif p < 0.01:
@@ -593,69 +648,83 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
         else:
             sig = ''
         result.loc[col, 'significance'] = sig
-    # result=result.sort_values(by="ttest_p", ascending=True)
-    ## save 
-    # as latex
-    outpath_csv=os.path.join(output_folder, 'table_host.csv')    
-    result.to_csv(outpath_csv, index=False)
-    print(f"[SAVE] table host csv saved to {outpath_csv}!\n")  
+    if group_col=='host_is_superhost':
+        
+        result = result.rename(columns={'t':"Superhôte",
+                                        'f':"Autres"}
+                               )  
+        desired_order=['Superhôte','Autres','ttest_p','significance']
+        result=result[desired_order]    
+        
+            
+    # reorder:
 
-    # as csv 
-    outpath_latex=os.path.join(output_folder, 'table_host_latex.tex')
-    save_csv_as_latex(table_csv=result, 
-                      output_path=outpath_latex, 
-                      caption="Tableau du profil des Superhôtes et des Autres",
-                      label="tab:table_host")
     
+    if save :  
+        if filename_noext==None:
+            filename_csv= f'table_groupby_{group_col}.csv'
+            filename_tex=f'table_groupby_{group_col}.tex'
+        else : 
+            filename_csv=filename_noext+'.csv'
+            filename_tex=filename_noext+'.tex'
+            
+        # as csv
+        outpath_csv=os.path.join(output_folder,filename_csv)    
+        result.to_csv(outpath_csv, index=True)# index TRUE!!!
+        print(f"✅ [SAVE] table host csv saved to {outpath_csv}!\n")  
+
+        # as latex 
+        outpath_latex=os.path.join(output_folder,"latex", filename_tex)
+        save_csv_as_latex(table_csv=result, 
+                        output_path=outpath_latex, 
+                        caption="Tableau du profil des Superhôtes et des Autres",
+                        label="tab:table_host", 
+                        round=3)
+
     return result
 
-
-def plot_violon(df_input, vars, to_fillna0=False, output_folder="mod_results", filename=None):
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    
-    df=df_input.copy()
-    if to_fillna0==True:
-        df[vars]=df[vars].fillna(0)
-    
-    data=df[vars]   
-    plt.figure(figsize=(8,6))
-    sns.violinplot(data, palette='viridis')
-    plt.title("violinplot of scores")
-    plt.xticks(rotation=45)
-    if filename==None:
-        filename="violonplot.jpg"
-    outpath_violon=os.path.join(output_folder,filename)
-    plt.savefig(outpath_violon, dpi=300)
-    plt.tight_layout()
-    print(f"[SAVE] violon plot saved to {outpath_violon}!")
-        
-    return 
 
 
 
 def plot_distribution(df, group_col=None, y_var='booking_rate_l30d', 
-                                   output_folder="mod_results",filename=None):
+                    save=False, output_folder="mod_results",filename=None):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
     # 单独使用时需要检查
     os.makedirs(output_folder, exist_ok=True)     
-
+    # to numeric
     df[y_var] = pd.to_numeric(df[y_var], errors='coerce')
     
     plt.figure(figsize=(10,6))
     colors = ['#1f77b4', '#ff7f0e']  # 蓝色/橙色
-    title= "Distribution de Taux de réservation" 
     
-    if group_col:   
+
+    title= f"Distribution de {y_var}" 
+    if y_var=="booking_rate_l30d":
+        title=f"Distribution de Taux de réservation" # no touch to y_var!
+
+    if group_col:
+        groups = df[group_col].unique()
+        print(f'[INFO] groups of {group_col}:{groups}')
+        
+        group_title=f" ({group_col} {groups[0]} vs {groups[1]})" #开头空一格
+        if group_col=='host_is_superhost':
+            group_title= " (Superhôtes vs Autres)"
+        title+=group_title
+
+
         for i, val in enumerate(["t", "f"]):
             group_data = df[df[group_col]==val][y_var].dropna()
-            label = "Superhôtes" if val=="t" else "Autres"
-            title+="(Superhôtes vs Autres)"
+            label=i
+            if group_col=="host_is_superhost":
+                label = "Superhôtes" if val=="t" else "Autres"
+            
             # 画 KDE 曲线
             sns.kdeplot(group_data, fill=True, alpha=0.3, label=label, color=colors[i])
             sns.kdeplot(group_data, color=colors[i], lw=2)  
+    
+    
     else :     
         group_data=df[y_var].dropna()       
         sns.kdeplot(group_data, fill=True, alpha=0.3, color=colors[0])
@@ -665,11 +734,42 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
     plt.ylabel("Densité")
     plt.title(title)
     plt.legend()
+    if save: 
+        if filename==None:
+            filename=f"host_performance_on_{y_var}.jpg"
+        outpath_kde=os.path.join(output_folder,filename)
+        plt.savefig(outpath_kde, dpi=300)
+        plt.show()
+        print(f"✅ [SAVE] plot distribution saved to {outpath_kde}!")
+        
+    return  
 
-    if filename==None:
-        filename="host_performance.jpg"
-    outpath_kde=os.path.join(output_folder,filename)
-    plt.savefig(outpath_kde, dpi=300)
-    plt.show()
-    return 
+
+
+
+def plot_violon(df_input, vars, to_fillna0=False, save=False, 
+                output_folder="mod_results", filename=None):
     
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    
+    df=df_input.copy()
+    if to_fillna0==True:
+        df[vars]=df[vars].fillna(0)
+    
+    data=df[vars]   
+    plt.figure(figsize=(6,4))
+    sns.violinplot(data, palette='viridis')
+    plt.title("violinplot of scores")
+    plt.xticks(rotation=45)
+    
+    # save
+    if save:    
+        if filename==None:
+            filename="violonplot.jpg"
+        outpath_violon=os.path.join(output_folder,filename)
+        plt.tight_layout()#必须在savefig前
+        plt.savefig(outpath_violon, dpi=300)
+        print(f"✅ [SAVE] violon plot saved to {outpath_violon}!")
+        
+    return 
