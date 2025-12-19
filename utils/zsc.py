@@ -44,9 +44,7 @@ def run_zsc(
         "MoritzLaurer/bge-m3-zeroshot-v2.0"
         "tasksource/ModernBERT-large-nli"
         
-        
         返回df_zsc :id, host_about,lang, labels
-        
         
     """
 

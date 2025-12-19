@@ -442,7 +442,9 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
         f"4) if enter 'threshold_km':\n"
         f"location :'latitude','longitude': ADD 'is_within_Xkm'\n"
         f"calculate  distance bewtween listing and its cloest venue. if it's under {threshold_km} km, 'is_within_{threshold_km} km' ==1, else 0.\n"
-        )
+        
+        f"5) cols to keep : only keeps cols needed!")
+    
     vars_to_dropna=[]    
      
     print("# ---------------------------proxy---------------------------")
@@ -451,15 +453,6 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
                                     get_boooking_rate_l30d=get_boooking_rate_l30d)
     vars_to_dropna.extend(proxy_vars)
     
-    # all_vars.extend(proxy_vars)    
-    # ## 单独写？
-    # if get_boooking_rate_l30d==True and filtrate_by_booking_rate==True:
-    #     print(f"len BEFORE filtrage of nan (availability==0) by 'booking_rate_l30d': {len(df_filtered)}")
-    #     df_filtered=df_filtered[df_filtered['booking_rate_l30d'].notna()]
-    #     print(f"len AFTER: {len(df_filtered)}\n")           
-    
-    # if get_boooking_rate_l30d==True:
-    #     all_vars.extend(['number_of_reviews_l30d',"booking_rate_l30d"])#?
     
     print("#------------------------ obj vars ---------------------------")
     if "instant_bookable" in obj_vars:
@@ -518,9 +511,6 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
     print(f"\n✅[SAVE] {len(df_filtered)} lines df_filtered saved to '{outpath_df_filtered}'!")
     
     return df_filtered
-
-
-
 
 
 
