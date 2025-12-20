@@ -157,23 +157,21 @@ def run_zsc(
             ## 每次要和df_done合并保存，不然结果中只有上一轮论更新的，丢失上一次之前的！
             df_zsc = pd.concat([df_done, pd.DataFrame(results_list)], ignore_index=True)
             df_zsc.to_csv(outpath_zsc_result, index=False)
-            print(f"✔ [SAVE] checkpoint {len(df_zsc)} / {len(df_unique)} saved to {outpath_zsc_result}!\n")
-    
+            print(f"✔ [SAVE] checkpoint {len(df_zsc)} / {len(df_unique)} saved to {outpath_zsc_result}!\n") 
     
     ## 最后一次保存!!!
     if results_list:
         # 合并done+todo :
-        
         df_zsc = pd.concat([df_done, pd.DataFrame(results_list)], ignore_index=True)
         # save :有结果的更新原结果
         df_zsc.to_csv(outpath_zsc_result, index=False)
-        print(f"✅ [FINAL SAVE] {len(df_zsc)} rows saved to {outpath_zsc_result}")
+        print(f"✅ [FINAL SAVE] {len(df_zsc)} rows saved to {outpath_zsc_result}!")
+    
     end_time = time.time()
-
     print(f"\n ⭐ [SUCCESS] ZSC sur {len(df)} textes avec {len(dict_items['en'])} EN labels/{len(dict_items['fr'])} FR labels \n"
           f"par {model_name} prend {end_time - start_time:.2f} sec !\n")
     
-    if log:
+    if log:# 中断无法储存？
         today=datetime.today()
         today_str=today.strftime('%Y-%m-%d %H:%M')
         # 和df_zsc存在同一个地方
@@ -193,7 +191,6 @@ def run_zsc(
             print(f"✅ [SAVE] log saved to {outpath_log}!")
     
     return pd.DataFrame(results_list)
-
 
 
 def merge_by_host_about(path_df_zsc, path_df_filtered, 
