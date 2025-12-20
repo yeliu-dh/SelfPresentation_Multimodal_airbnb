@@ -66,7 +66,9 @@ def run_zsc(
         dict_items={'en':labels_en,
                     'fr':labels_fr}
         dict_fr2en=dict(zip(labels_fr, labels_en))
-
+        if len(labels_en)!=len(labels_fr):
+            print(f"[CHECK] labels fr match labels en !")
+    
     ## input    
     print("load df_unique & previous result".center(100,'-'))    
     df_unique=pd.read_csv(path_df_unique)
@@ -152,8 +154,10 @@ def run_zsc(
         
         # save_interval
         if (idx + 1) % save_interval == 0:
-            pd.DataFrame(results_list).to_csv(outpath_zsc_result, index=False)
-            print(f"✔ [SAVE] {idx+1} / {len(df)} checkpoint saved to {outpath_zsc_result}!\n")
+            ## 每次要和df_done合并保存，不然结果中只有上一轮论更新的，丢失上一次之前的！
+            df_zsc = pd.concat([df_done, pd.DataFrame(results_list)], ignore_index=True)
+            df_zsc.to_csv(outpath_zsc_result, index=False)
+            print(f"✔ [SAVE] checkpoint {len(df_zsc)} / {len(df_unique)} saved to {outpath_zsc_result}!\n")
     
     
     ## 最后一次保存!!!
@@ -161,10 +165,9 @@ def run_zsc(
         # 合并done+todo :
         
         df_zsc = pd.concat([df_done, pd.DataFrame(results_list)], ignore_index=True)
-        
         # save :有结果的更新原结果
         df_zsc.to_csv(outpath_zsc_result, index=False)
-        print(f"✅ [SAVE] Final save: {len(df_zsc)} rows to {outpath_zsc_result}")
+        print(f"✅ [FINAL SAVE] {len(df_zsc)} rows saved to {outpath_zsc_result}")
     end_time = time.time()
 
     print(f"\n ⭐ [SUCCESS] ZSC sur {len(df)} textes avec {len(dict_items['en'])} EN labels/{len(dict_items['fr'])} FR labels \n"
@@ -180,6 +183,7 @@ def run_zsc(
             f.write(
                 f"{today_str.center(100, '-')}\n"
                 f"df_unique:{path_df_unique}\n"
+                f"zsc done :{len(results_list)}*{len(labels_en)}"
                 f"labels EN: {labels_en}\n"
                 f"labels FR :{labels_fr}\n"
                 f"model : {model_name}\n"
