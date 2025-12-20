@@ -215,7 +215,7 @@ def merge_by_host_about(path_df_zsc, path_df_filtered,
             output_folder=os.path.dirname(path_df_filtered)
         os.makedirs(output_folder, exist_ok=True)
         
-        filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items{len(items_cols)-1}.csv")
+        filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items.csv")
         
         outpath_df_items=os.path.join(output_folder,filename) 
         df_items.to_csv(outpath_df_items, index=False)
