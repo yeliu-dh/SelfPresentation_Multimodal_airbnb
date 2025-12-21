@@ -650,6 +650,60 @@ def get_booking_rate_l30d(df):
     return 
 
 
+# def get_number_of_reviewsQ3(df_scores, dfQ3):
+#     # no match / neg value stay nan in number_of_reviewsQ3
+    
+#     df_reviews=df_scores.copy()
+#     df_reviews=df_reviews.rename(columns={"number_of_reviews":'number_of_reviews_tillQ2'})
+    
+#     reviewsQ3=dfQ3[['id','number_of_reviews']]
+#     reviewsQ3.columns=['id','number_of_reviews_tillQ3']
+    
+#     df_reviews=df_reviews.merge(reviewsQ3, left_on='id', right_on="id", how="left")
+
+#     df_reviews['number_of_reviewsQ3']=df_reviews['number_of_reviews_tillQ3']-df_reviews["number_of_reviews_tillQ2"]
+#     df_reviews['number_of_reviewsQ3']=df_reviews['number_of_reviewsQ3'].apply(lambda x : np.nan if x<0 else x)
+    
+#     return df_reviews
+
+# def get_booking_rate_l90d(df):
+#     if "number_of_reviewsQ3" not in df.columns or "availability_90" not in df.columns:
+#         print(f"[WARNING]number_of_reviewsQ3 or availability_90 not in df!!!\n")
+#     else :        
+#         df['booking_rate_l90d'] = df.apply(
+#                 lambda row: min(row['number_of_reviewsQ3'] / row['availability_90'], 1.0)
+#                 if row['availability_90'] > 0 else None,
+#                 axis=1
+#             )
+#     desc_catORnum(df, vars=["booking_rate_l90d"])
+
+#     return 
+    
+def add_booking_rate_l90d(df, df_nextQ):
+    # no match / neg value stay nan in number_of_reviewsQ3
+    
+    df_reviews=df.copy()
+    df_reviews=df_reviews.rename(columns={"number_of_reviews":'number_of_reviews_till_Q'})
+    
+    reviews_nextQ=df_nextQ[['id','number_of_reviews']]
+    reviews_nextQ.columns=['id','number_of_reviews_till_nextQ']
+    
+    df_reviews=df_reviews.merge(reviews_nextQ, left_on='id', right_on="id", how="left")
+
+    df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_till_nextQ']-df_reviews["number_of_reviews_till_Q"]
+    df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_nextQ'].apply(lambda x : np.nan if x<0 else x)
+    
+    df_reviews['booking_rate_l90d'] = df_reviews.apply(
+                lambda row: min(row['number_of_reviews_nextQ'] / row['availability_90'], 1.0)
+                if row['availability_90'] > 0 else None,
+                axis=1
+            )
+
+    return df_reviews
+
+
+
+
 def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
                 output_folder=None,
                 to_fillna0=True,
