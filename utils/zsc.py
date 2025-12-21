@@ -34,6 +34,7 @@ def run_zsc(
     outpath_zsc_result=None, 
     save_interval=1000,# save every 
     log=True):
+    
     """
         无论如何都要输入原df_unique用于筛选除了中间结果中还有多少todo！
         自己定义输出路径：有中间结果，则更新原路径文件
@@ -44,10 +45,12 @@ def run_zsc(
         "MoritzLaurer/bge-m3-zeroshot-v2.0"
         "tasksource/ModernBERT-large-nli"
         
+        outpath_zsc_result=output_zsc/model_name/listings_paris2406_items.csv
+        
         返回df_zsc :id, host_about,lang, labels
         
     """
-
+       
     if not dict_items:     
         labels_en=[
             'open to different cultures', 'cosmopolitan','international view', 'cultural exchange',
@@ -169,7 +172,7 @@ def run_zsc(
     
     end_time = time.time()
     print(f"\n ⭐ [SUCCESS] ZSC sur {len(df)} textes avec {len(dict_items['en'])} EN labels/{len(dict_items['fr'])} FR labels \n"
-          f"par {model_name} prend {end_time - start_time:.2f} sec !\n")
+          f"par {model_name} prend {(end_time - start_time)/3600:.2f} hours !\n")
     
     if log:# 中断无法储存？
         today=datetime.today()
@@ -186,11 +189,14 @@ def run_zsc(
                 f"labels FR :{labels_fr}\n"
                 f"model : {model_name}\n"
                 f"df_items :{outpath_zsc_result}\n"
-                f"runtime: {end_time - start_time:.2f} sec\n"
+                f"runtime: {(end_time - start_time)/3600:.2f} hours\n"
             )
             print(f"✅ [SAVE] log saved to {outpath_log}!")
     
     return pd.DataFrame(results_list)
+
+
+
 
 
 def merge_by_host_about(path_df_zsc, path_df_filtered, 

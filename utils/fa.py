@@ -30,7 +30,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
         get_scores_heatmap=True,
         get_cronbachs_a=True,
         get_barplot=False, get_pca3d=False, 
-        round=4):
+        ndigits=4):
     # no suffix!
     # 英语提示，但是图片标题用法语！
     ## fa DROPNA!
@@ -107,7 +107,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
                           output_path=outpath_fa_items, 
                           caption="Bilan des items des tactiques de la présentation de soi", 
                           label="tab:fa_items_table", 
-                          round=round,escape=True, index=False)
+                          ndigits=ndigits,escape=True, index=False)
         
     
     if get_items_table==True:#***
@@ -142,7 +142,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
             index=data.columns,
             columns=columns
         )
-        df_fa.round(round)
+        df_fa.round(ndigits)
         
         # reorder 
         # desired_order=['gamma','sigma','ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
@@ -161,7 +161,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
                 for item in items:
                     if item in df_fa.index and factor in df_fa.columns:
                         df_fa.loc[item, factor] = round(
-                            float(df_fa_num.loc[item, factor]), round
+                            float(df_fa_num.loc[item, factor]), ndigits
                         )
                         df_fa.loc[item]
         # display(df_fa)
@@ -184,7 +184,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
         save_csv_as_latex(table_csv=df_fa, output_path=outpath_items_fa_latex, 
                           caption="Tableau de l'analyse factorielle des items", 
                           label="tab:items_fa", 
-                          round=round,
+                          ndigits=ndigits,
                           escape=True,
                           index=True)
         
@@ -279,7 +279,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
         save_csv_as_latex(table_csv=loadings_scores_df, output_path=outpath_scores_fa_latex,
                           caption="Tableau de l'analyse factorielle des tactiques",
                           label="tab: tactics_fa",
-                          round=round, escape=True, index=True)       
+                          ndigits=ndigits, escape=True, index=True)       
         # plot
         if get_scores_heatmap:      
             sns.heatmap(loadings_scores_df, annot=True, cmap='coolwarm')
@@ -319,7 +319,8 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
     
     #数据放在和OUTPUT_FOLDER同级文件夹: data_processed
     os.makedirs(output_folder_data, exist_ok=True)
-    filename=path_df_items.replace("_items.csv", "_scores.csv")
+    # filename=path_df_items.replace("_items", "_scores")
+    filename=os.path.basename(path_df_items).replace("_items", "_scores")
     outpath_listings_tactics=os.path.join(output_folder_data,filename)
     listings_tactics.to_csv(outpath_listings_tactics, index=False)
     display(listings_tactics.head())

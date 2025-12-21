@@ -6,7 +6,7 @@ import os
 import time
 import numpy as np
 import time
-# from utils.io import save_csv_as_latex
+from utils.io import save_csv_as_latex
 
 ##=============================DESC STAT=====================================##
 
@@ -63,9 +63,6 @@ def desc_catORnum(df, vars):
 
 
 
-
-
-
 ##==================================HOST VARS============================================##
 import langid #这个库速度更快、稳定性高。
 
@@ -78,18 +75,18 @@ def is_valid_text(text):
         pas que les caractères
     renvoyer T/F
     """
-        if pd.isna(text):  # ==dropnaNaN
-            return False
-        text = str(text).strip()
-        if len(text) == 0:  # strip
-            return False
-        # effacer ce qui n'a que de ponctuation
-        if not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", text):
-            return False
-         # effacer url
-        if re.fullmatch(r"https://\S+", text):
-            return False
-        return True
+    if pd.isna(text):  # ==dropnaNaN
+        return False
+    text = str(text).strip()
+    if len(text) == 0:  # strip
+        return False
+    # effacer ce qui n'a que de ponctuation
+    if not re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", text):
+        return False
+        # effacer url
+    if re.fullmatch(r"https://\S+", text):
+        return False
+    return True
 
 
 
@@ -539,26 +536,42 @@ def preprocess_obj_vars(df, proxy_vars=['price',"availability_30","availability_
 
 ## ======================================DESC================================================##
 
-def group_mean_table(df, cols, group_col='host_is_superhost'):
-    """
-    生成一个表格，对指定cols在group_col的两组之间取均值。
-    
-    df: pandas DataFrame
-    cols: list of column names to observe
-    group_col: 分组列名，默认 'host_is_superhost'
-    
-    返回: DataFrame，index=cols, 列=[Superhôte, Autres]
-    """
-    # 创建空DataFrame
-    result = pd.DataFrame(index=cols, columns=['Superhôte', 'Autres'])
-    
-    for col in cols:
-        # 两组均值
-        result.loc[col, 'Superhôte'] = df[df[group_col]=='t'].get(col).mean()
-        result.loc[col, 'Autres']   = df[df[group_col]!='t'].get(col).mean()
-    
 
-    return result
+"""
+# exemplaire :
+
+cols_to_check=[
+    # "host_identity_verified", "host_has_profile_pic",         
+    "review_scores_rating",'number_of_reviews',
+    "years_since_host", "professional_host",#'calculated_host_listings_count',
+    # "lang", "len",
+    "price", "availability_30", "room_type", "instant_bookable"
+]   
+
+
+"""
+
+
+# def group_mean_table(df, cols, group_col='host_is_superhost'):
+#     """
+#     生成一个表格，对指定cols在group_col的两组之间取均值。
+    
+#     df: pandas DataFrame
+#     cols: list of column names to observe
+#     group_col: 分组列名，默认 'host_is_superhost'
+    
+#     返回: DataFrame，index=cols, 列=[Superhôte, Autres]
+#     """
+#     # 创建空DataFrame
+#     result = pd.DataFrame(index=cols, columns=['Superhôte', 'Autres'])
+    
+#     for col in cols:
+#         # 两组均值
+#         result.loc[col, 'Superhôte'] = df[df[group_col]=='t'].get(col).mean()
+#         result.loc[col, 'Autres']   = df[df[group_col]!='t'].get(col).mean()
+
+#     return result
+
 
 
 
@@ -669,7 +682,7 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
                         output_path=outpath_latex, 
                         caption="Tableau du profil des Superhôtes et des Autres",
                         label="tab:table_host", 
-                        round=3)
+                        ndigits=3)
 
     return result
 
@@ -738,7 +751,7 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
 
 
 def plot_violon(df_input, vars, to_fillna0=False, save=False, 
-                output_folder="mod_results", filename=None):
+                output_folder=None, filename=None):
     
     import matplotlib.pyplot as plt
     import seaborn as sns

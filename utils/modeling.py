@@ -19,7 +19,7 @@ import statsmodels.formula.api as smf
 
 # my utils
 from utils.io import save_csv_as_latex
-
+from utils.preprocess_listings import desc_catORnum
 
 
 def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
@@ -180,38 +180,6 @@ from utils.io import save_csv_as_latex
 #========================================MODELS========================================
 
 
-# def make_one_models_table(models_dict, params):
-#     # 创建空表
-#     df_table = pd.DataFrame(index=params)
-
-#     for name, model in models_dict.items():
-#         coefs = model.params
-#         ses   = model.bse
-#         pvals = model.pvalues
-        
-#         col_vals = []
-#         for var in params:
-#             if var in coefs.index:
-#                 # 加星号
-#                 stars = ""
-#                 if pvals[var] < 0.01:
-#                     stars = "***"
-#                 elif pvals[var] < 0.05:
-#                     stars = "**"
-#                 elif pvals[var] < 0.10:
-#                     stars = "*"
-
-#                 coef_str = f"{coefs[var]:.4f}{stars}"
-#                 se_str   = f"({ses[var]:.4f})"
-                
-#                 col_vals.append(coef_str + "\n" + se_str)
-#             else:
-#                 col_vals.append("")
-        
-#         df_table[name] = col_vals
-
-#     return df_table
-
 def make_one_models_table(models_dict, params):
     # 创建空表
     df_table = pd.DataFrame(index=params)
@@ -257,7 +225,7 @@ def make_one_models_table(models_dict, params):
     return df_table
 
 
-def make_models_table(models_dict, vars_kp, ROUND=None, 
+def make_models_table(models_dict, vars_kp, ndigits=None, 
                      save=False, output_folder=None, filename_noext=None):
     
     """
@@ -300,14 +268,13 @@ def make_models_table(models_dict, vars_kp, ROUND=None,
         output_path_kp=os.path.join(output_folder,'latex', filename_kp)
         output_path_ctrl=os.path.join(output_folder, 'latex',filename_ctrl)
         
-        
         save_csv_as_latex(table_kp, 
                         output_path=output_path_kp,
                         caption="Résultat des modèles de régression OLS",
                         label="tab:table_mods_keyvars",
                         escape=False, #* 
                         index=True,
-                        round=ROUND)
+                        ndigits=ndigits)
         
         save_csv_as_latex(table_ctrl, 
                         output_path=output_path_ctrl,
@@ -315,7 +282,7 @@ def make_models_table(models_dict, vars_kp, ROUND=None,
                         label="tab:table_mods_keyvars", 
                         escape=False, #* 
                         index=True,
-                        round=ROUND)
+                        ndigits=ndigits)
         
 
     return table_kp,table_ctrl
@@ -633,9 +600,9 @@ def layout_plots(df_input, x_vars, y_var, tactics_vars,
     os.makedirs(output_folder, exist_ok=True)
     if filename is None:
         if group_col!=None:
-            filename = "tactics_interaction_plots.jpg"
+            filename = f"{y_var}_tacticsX{group_col}_plots.jpg"
         else : 
-            filename="tactics_plots.jpg"  
+            filename=f"{y_var}_tactics_plots.jpg"  
               
     outpath_plots = os.path.join(output_folder, filename)
     if save:    
@@ -648,51 +615,89 @@ def layout_plots(df_input, x_vars, y_var, tactics_vars,
     
     return fig, axes
 
+##===========================================MOD===============================================
+"""
+## exemple des vars baseline :
+
+y_var="booking_rate_l30d"
+x_vars=["host_identity_verified", "host_has_profile_pic",         
+    "review_scores_rating", #"has_rating", "number_of_reviews",
+    "years_since_host","professional_host",'host_is_superhost', #'calculated_host_listings_count',
+    "lang", "len",
+    "price", "availability_30", "room_type", "instant_bookable"
+]  
+tactics_vars=["ouverture", "authenticité","sociabilité","auto_promotion","exemplarité"]
+group_col="host_is_superhost"
+output_folder='../mod_results'
+
+#加不加has_rating, count差别不大！
+# calculated_host_listings_count
+# "property_type"
+ 
+
+"""
+def get_booking_rate_l30d(df):
+    if "number_of_reviews_l30d" not in df.columns or "availability_30" not in df.columns:
+        print(f"[WARNING]number_of_reviews_l30d or availability_30 not in df!!!\n")
+    else :        
+        df['booking_rate_l30d'] = df.apply(
+                lambda row: min(row['number_of_reviews_l30d'] / row['availability_30'], 1.0)
+                if row['availability_30'] > 0 else None,
+                axis=1
+            )
+    desc_catORnum(df, vars=["booking_rate_l30d"])
+
+    return 
 
 
 def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
-                OUTPUT_FOLDER=None,
+                output_folder=None,
+                to_fillna0=True,
                 run_vif=False,
                 # save_models_summary=False,  
                 save_models_table=True,
                 save_plots=True,
-                ROUND=None
+                ndigits=None
                 ):
-    
+    print("check data".center(100,'='))
+    if to_fillna0:
+        print(f"[INFO] fillna in key cols!`\n")
+        
+        
     print("check output folder".center(100,'='))
-    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    print(f"[INFO] results saved to {OUTPUT_FOLDER}!\n")
+    os.makedirs(output_folder, exist_ok=True)
+    print(f"[INFO] results saved to {output_folder}!\n")
     
     if run_vif:    
         print("vif".center(100, '='))    
         check_vif (df=df_input, x_vars=x_vars, y_var=y_var, key_vars=key_vars, group_col=None)
 
-    print("basic model".center(100,"="))
+    print("\n","basic model".center(100,"="),"\n")
     df, formula, model_basic=build_model (df_input=df_input,
             x_vars=x_vars, key_vars=None, #*
-            to_fillna0=True,
+            to_fillna0=to_fillna0,
             y_var=y_var, group_col=None, #*
-            # outpath_folder=OUTPUT_FOLDER, 
+            # outpath_folder=output_folder, 
             # tex_filename='ols_summary_basic.tex', 
             # save=save_models_summary
             )
     
-    print("tactics model".center(100, '='))
+    print("\n", "tactics model".center(100, '='),"\n")
     df, formula, model_tactics=build_model (df_input=df_input,
             x_vars=x_vars, key_vars=key_vars, 
-            to_fillna0=True,
+            to_fillna0=to_fillna0,
             y_var=y_var, group_col=None, #*
-            # outpath_folder=OUTPUT_FOLDER, 
+            # outpath_folder=output_folder, 
             # tex_filename='ols_summary_tactics.tex', 
             # save=save_models_summary
             )
     
-    print("interaction model".center(100,'='))
+    print("\n","interaction model".center(100,'='),"\n")
     df, formula, model_interaction=build_model (df_input=df_input, 
             x_vars=x_vars, key_vars=key_vars, 
-            to_fillna0=True,
+            to_fillna0=to_fillna0,
             y_var=y_var, group_col=group_col, 
-            # outpath_folder=OUTPUT_FOLDER, 
+            # outpath_folder=output_folder, 
             # tex_filename='ols_summary_interaction.tex', 
             # save=save_models_summary
             )
@@ -705,9 +710,9 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     }
     table_kp, table_ctrl=make_models_table(models_dict=models_dict, 
                     vars_kp=key_vars+[group_col], #+langue？ 
-                    ROUND=ROUND,
+                    ndigits=ndigits,
                     save=save_models_table, 
-                    output_folder=OUTPUT_FOLDER, 
+                    output_folder=output_folder, 
                     filename_noext=None)
         
         
@@ -716,7 +721,7 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
             tactics_vars=key_vars, 
             group_col=None,
             save=save_plots, 
-            output_folder=OUTPUT_FOLDER,
+            output_folder=output_folder,
             filename=None)
     
     print("interaction plots".center(100,"="))
@@ -724,7 +729,10 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
             tactics_vars=key_vars,
             save=save_plots, 
             group_col='host_is_superhost', 
-            output_folder=OUTPUT_FOLDER,
+            output_folder=output_folder,
             )
+    
+    
+    
     return 
 
