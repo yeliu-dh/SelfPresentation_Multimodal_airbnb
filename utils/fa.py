@@ -107,7 +107,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
                           output_path=outpath_fa_items, 
                           caption="Bilan des items des tactiques de la présentation de soi", 
                           label="tab:fa_items_table", 
-                          ndigits=ndigits,escape=True, index=False)
+                          ndigits= ndigits,escape=True, index=False)
         
     
     if get_items_table==True:#***

@@ -109,9 +109,14 @@ def p_to_sig(p):#!= get_term_sig
         return ''
 
 
-def get_group_effect(model, key_var, group_col):
-    interaction_term = f"C({group_col})[T.t]:{key_var}"
+def get_group_effect(df, model, key_var, group_col):
+    if pd.api.types.is_numeric_dtype(df[group_col]):# 数值型
+        interaction_term = f"{group_col}:{key_var}"
+    else :
+        interaction_term = f"C({group_col})[T.t]:{key_var}"
 
+    
+    
     # 构造一个 系数选择向量 c, 所有terms归零
     lin_comb = np.zeros(len(model.params))
     
@@ -167,7 +172,7 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
     
     if group_col:
         for k_var in key_vars:
-            t_res=get_group_effect(model, key_var=k_var, group_col=group_col)            
+            t_res=get_group_effect(df, model, key_var=k_var, group_col=group_col)            
             
     return df, formula, model
 
@@ -448,7 +453,7 @@ def plot_key_var(df_input, x_vars, y_var, tactics_vars,
             # 取对应的显著性
             if g == "t":
                 # term = f"C({group_col})[T.t]:{tactic}" # 直接取了交互项的sig，但是t组应该是主效应+交互项
-                t_res=get_group_effect(model=model, key_var=tactic, group_col=group_col)         
+                t_res=get_group_effect(df=df, model=model, key_var=tactic, group_col=group_col)         
                 sig=p_to_sig(t_res.pvalue)
                 
             else:
@@ -649,35 +654,8 @@ def get_booking_rate_l30d(df):
 
     return 
 
-
-# def get_number_of_reviewsQ3(df_scores, dfQ3):
-#     # no match / neg value stay nan in number_of_reviewsQ3
     
-#     df_reviews=df_scores.copy()
-#     df_reviews=df_reviews.rename(columns={"number_of_reviews":'number_of_reviews_tillQ2'})
     
-#     reviewsQ3=dfQ3[['id','number_of_reviews']]
-#     reviewsQ3.columns=['id','number_of_reviews_tillQ3']
-    
-#     df_reviews=df_reviews.merge(reviewsQ3, left_on='id', right_on="id", how="left")
-
-#     df_reviews['number_of_reviewsQ3']=df_reviews['number_of_reviews_tillQ3']-df_reviews["number_of_reviews_tillQ2"]
-#     df_reviews['number_of_reviewsQ3']=df_reviews['number_of_reviewsQ3'].apply(lambda x : np.nan if x<0 else x)
-    
-#     return df_reviews
-
-# def get_booking_rate_l90d(df):
-#     if "number_of_reviewsQ3" not in df.columns or "availability_90" not in df.columns:
-#         print(f"[WARNING]number_of_reviewsQ3 or availability_90 not in df!!!\n")
-#     else :        
-#         df['booking_rate_l90d'] = df.apply(
-#                 lambda row: min(row['number_of_reviewsQ3'] / row['availability_90'], 1.0)
-#                 if row['availability_90'] > 0 else None,
-#                 axis=1
-#             )
-#     desc_catORnum(df, vars=["booking_rate_l90d"])
-
-#     return 
     
 def add_booking_rate_l90d(df, df_nextQ):
     # no match / neg value stay nan in number_of_reviewsQ3
@@ -689,10 +667,13 @@ def add_booking_rate_l90d(df, df_nextQ):
     reviews_nextQ.columns=['id','number_of_reviews_till_nextQ']
     
     df_reviews=df_reviews.merge(reviews_nextQ, left_on='id', right_on="id", how="left")
-
+    
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_till_nextQ']-df_reviews["number_of_reviews_till_Q"]
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_nextQ'].apply(lambda x : np.nan if x<0 else x)
     
+    print(f"[CHECK] number_of_reviews_nextQ not match (to drop) :{len(df_reviews[df_reviews['number_of_reviews_nextQ'].isna()])};\n"
+          f"ON availability_90 ==0 (to drop) {len(df_reviews[df_reviews['availability_90']==0])}!\n")
+
     df_reviews['booking_rate_l90d'] = df_reviews.apply(
                 lambda row: min(row['number_of_reviews_nextQ'] / row['availability_90'], 1.0)
                 if row['availability_90'] > 0 else None,

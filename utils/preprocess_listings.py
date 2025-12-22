@@ -263,7 +263,10 @@ def preprocess_host_variables(df_raw):
 
 ##==================================PROXY============================================##
 
-def filter_df(df, vars, filtrate_by_booking_rate_l30d=False):
+def filter_df(df, vars, 
+              filtrate_by_booking_rate_l30d=False, 
+              filtrate_by_booking_rate_l90d=False,
+              ):
     
     df_filtered=df.copy()
 
@@ -273,10 +276,15 @@ def filter_df(df, vars, filtrate_by_booking_rate_l30d=False):
     if len(missings_vars)>0:
         print(f"[WARNING] missing vars in df : {'; '.join(missings_vars)}!!")
     
-    if filtrate_by_booking_rate_l30d==False and 'booking_rate_l30d' in vars_valid:
-        vars_valid.remove("booking_rate_l30d")
-        print("[CHECK] no filter on 'booking_rate_l30d'!")
+    if filtrate_by_booking_rate_l30d==False :
+        vars_valid=[ v for v in vars_valid if v not in [ 'number_of_reviews_l30d','availability_30','booking_rate_l30d']]
+        print("[CHECK] no filter on 'number_of_reviews_l30d','availability_30','booking_rate_l30d'!")
+    
+    if filtrate_by_booking_rate_l90d==False :
+        vars_valid=[ v for v in vars_valid if v not in [ 'number_of_reviews_nextQ','availability_90','booking_rate_l90d']]
+        print("[CHECK] no filter on  'number_of_reviews_nextQ','availability_90','booking_rate_l90d'!")
         
+            
     # filter df
     for var in vars_valid :
         len_before=len(df_filtered)
@@ -337,10 +345,14 @@ def add_booking_rate_l90d(df, df_nextQ):
     reviews_nextQ.columns=['id','number_of_reviews_till_nextQ']
     
     df_reviews=df_reviews.merge(reviews_nextQ, left_on='id', right_on="id", how="left")
-
+    
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_till_nextQ']-df_reviews["number_of_reviews_till_Q"]
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_nextQ'].apply(lambda x : np.nan if x<0 else x)
     
+    
+    print(f"no match in 'number_of_reviews_nextQ': {df_reviews.number_of_reviews_nextQ.isna().sum()}\n"
+        f"availability==0=>nan: {len(df_reviews[df_reviews['availability_90']==0])}"
+          )
     df_reviews['booking_rate_l90d'] = df_reviews.apply(
                 lambda row: min(row['number_of_reviews_nextQ'] / row['availability_90'], 1.0)
                 if row['availability_90'] > 0 else None,
@@ -434,7 +446,7 @@ def categorize_property(ptype):
 
 def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","availability_90"], 
                         get_booking_rate_l30d=False, filtrate_by_booking_rate_l30d=False,#无输入时默认不按照booking筛选 
-                        get_booking_rate_l90d=True,
+                        get_booking_rate_l90d=True, filtrate_by_booking_rate_l90d=False,
                         obj_vars=["room_type", 'property_type',"minimum_nights","instant_bookable"], 
                         threshold_km:int=None, 
                         output_folder="mod_results", filename="listings_filtered.csv"):
@@ -454,11 +466,12 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
         f" if booking_rate_l30d > 1, take 1.\n\n"
         
         
-        f"3) if get 'number_of_reviews_nextQ' & 'booking_rate_l90d':\n"
+        f"3) if 'add_booking_rate_l90d':\n"
         f" ADD number_of_reviews_nextQ, booking_rate_l90d \n"
         f" if host no longer exists in df_nextQ or substraction get negative value, number_of_reviews_nextQ=> nan \n"
-        f" booking_rate_l30d = number_of_reviews_nextQ (Q3)/ availability_90 (Q2)\n\n"
-                   
+        f" booking_rate_l30d = number_of_reviews_nextQ (Q3)/ availability_90 (Q2)\n"
+        f" if filter False: no filter on booking_rate, ava, nb_reviews\n\n"
+
         
         f"4) obj vars :\n "
         f"- instant_bookable : fillna('f')\n"
@@ -532,7 +545,9 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
     vars_to_dropna=list(set(vars_to_dropna))
     print(f"[INFO] vars to dropna:{'; '.join(vars_to_dropna)}")
     
-    df_filtered=filter_df(df,vars=vars_to_dropna, filtrate_by_booking_rate_l30d=filtrate_by_booking_rate_l30d)
+    df_filtered=filter_df(df,vars=vars_to_dropna, 
+                          filtrate_by_booking_rate_l30d=filtrate_by_booking_rate_l30d,
+                          filtrate_by_booking_rate_l90d=filtrate_by_booking_rate_l90d)
     
     
     desc_catORnum(df=df_filtered, vars=vars_to_dropna) 
@@ -800,6 +815,7 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
     
 
     title= f"Distribution de {y_var}" 
+    
     if y_var=="booking_rate_l30d":
         title=f"Distribution de Taux de réservation" # no touch to y_var!
 
@@ -808,14 +824,19 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
         print(f'[INFO] groups of {group_col}:{groups}')
         
         group_title=f" ({group_col} {groups[0]} vs {groups[1]})" #开头空一格
+        
         if group_col=='host_is_superhost':
             group_title= " (Superhôtes vs Autres)"
+        
         title+=group_title
 
 
-        for i, val in enumerate(["t", "f"]):
+        # for i, val in enumerate(["t", "f"]):
+        for i, val in enumerate(groups):
             group_data = df[df[group_col]==val][y_var].dropna()
+            # print(i, group_data)
             label=i
+
             if group_col=="host_is_superhost":
                 label = "Superhôtes" if val=="t" else "Autres"
             
