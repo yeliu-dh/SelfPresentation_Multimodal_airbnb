@@ -320,6 +320,7 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
     #数据放在和OUTPUT_FOLDER同级文件夹: data_processed
     os.makedirs(output_folder_data, exist_ok=True)
     # filename=path_df_items.replace("_items", "_scores")
+
     filename=os.path.basename(path_df_items).replace("_items", "_scores")
     outpath_listings_tactics=os.path.join(output_folder_data,filename)
     listings_tactics.to_csv(outpath_listings_tactics, index=False)
