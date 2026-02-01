@@ -24,14 +24,16 @@ from utils.preprocess_listings import desc_catORnum
 
 def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
     # y not in x:
-    if y_var in x_vars:
-        x_vars.remove(y_var)
-    if group_col !=None and group_col in x_vars:
-        x_vars.remove(group_col)
+    x_vars_ctrl=x_vars.copy()
+    
+    if y_var in x_vars_ctrl:
+        x_vars_ctrl.remove(y_var)
+    if group_col !=None and group_col in x_vars_ctrl:
+        x_vars_ctrl.remove(group_col)
         
     # cat/num
-    cat_vars = [var for var in x_vars if not pd.api.types.is_numeric_dtype(df[var])]
-    num_vars = [var for var in x_vars if pd.api.types.is_numeric_dtype(df[var])]
+    cat_vars = [var for var in x_vars_ctrl if not pd.api.types.is_numeric_dtype(df[var])]
+    num_vars = [var for var in x_vars_ctrl if pd.api.types.is_numeric_dtype(df[var])]
     # print(f"[INFO] {len(cat_vars)} categorial vars: {cat_vars};\n"
     #         f"{len(num_vars)} numeric vars :{num_vars}\n")
 
@@ -61,6 +63,58 @@ def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
     print(f"[INFO] formula :\n {formula}\n")
     
     return formula 
+
+
+
+# def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
+
+#     x_vars_ctrl = x_vars.copy()
+#     if y_var in x_vars_ctrl:
+#         x_vars_ctrl.remove(y_var)
+
+#     # remove group cols from controls
+#     if group_col is not None:
+#         if isinstance(group_col, list):
+#             for g in group_col:
+#                 if g in x_vars_ctrl:
+#                     x_vars_ctrl.remove(g)
+#         else:
+#             if group_col in x_vars_ctrl:
+#                 x_vars_ctrl.remove(group_col)
+
+#     # cat / num split
+#     cat_vars = [v for v in x_vars_ctrl if not pd.api.types.is_numeric_dtype(df[v])]
+#     num_vars = [v for v in x_vars_ctrl if pd.api.types.is_numeric_dtype(df[v])]
+
+#     cat_vars_str = ' + '.join([f"C({v})" for v in cat_vars])
+#     num_vars_str = ' + '.join(num_vars)
+
+#     formula = f"{y_var} ~ {cat_vars_str}"
+#     if num_vars_str:
+#         formula += f" + {num_vars_str}"
+
+#     # --- build interaction ---
+#     if key_vars:
+#         key_block = ' + '.join(key_vars)
+
+#         if group_col is not None:
+#             if not isinstance(group_col, list):
+#                 group_col = [group_col]
+
+#             group_terms = []
+#             for g in group_col:
+#                 if not pd.api.types.is_numeric_dtype(df[g]):
+#                     group_terms.append(f"C({g})")
+#                 else:
+#                     group_terms.append(g)
+
+#             group_block = ' * '.join(group_terms)
+#             key_block = f"{group_block} * ({key_block})"
+
+#         formula += f" + {key_block}"
+
+#     print(f"[INFO] formula :\n{formula}\n")
+#     return formula
 
 
 
@@ -206,6 +260,52 @@ def get_group_effect(df, model, key_var, group_col):
 
 
 
+# def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
+#                 y_var='booking_rate_l30d', group_col=None, 
+                
+#                 # outpath_folder='mod_results', 
+#                 # tex_filename='ols_summary.tex', 
+#                 # save=False
+#                 ):
+#     df=df_input.copy()
+#     # os.makedirs(outpath_folder, exist_ok=True)
+    
+#     if group_col!=None and group_col in x_vars:
+#         x_vars.remove(group_col)    
+#         print(f"[CHECK] gruop col {group_col} removed from x_vars!\n")
+
+#     # collect all vars :
+#     all_vars=x_vars+[y_var]
+#     if key_vars!=None:
+#         all_vars+=key_vars    
+#     print(f"[CHECK] isna False in all {len(all_vars)} vars : {df[all_vars].isna().value_counts(dropna=False)}\n")
+    
+    
+#     if to_fillna0==True and key_vars!=None:
+#         df[key_vars]=df[key_vars].fillna(0)
+        
+#     formula=write_formula(df=df, x_vars=x_vars, y_var=y_var, key_vars=key_vars, group_col=group_col)
+    
+#     model=smf.ols(formula, data=df).fit()
+#     summary=model.summary()
+#     print(summary)
+    
+#     # if save==True:
+#     #     save_summary_as_latex(summary, output_folder=outpath_folder, 
+#     #                       tex_filename=tex_filename)
+    
+#     if group_col:
+#         for k_var in key_vars:
+#             print(k_var)
+#             df_ttest=get_group_effect_df(df, model, key_var=k_var, group_col=group_col)            
+#             display(df_ttest)
+            
+#     return df, formula, model
+
+
+
+
+
 def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
                 y_var='booking_rate_l30d', group_col=None, 
                 
@@ -213,15 +313,18 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
                 # tex_filename='ols_summary.tex', 
                 # save=False
                 ):
+
     df=df_input.copy()
     # os.makedirs(outpath_folder, exist_ok=True)
-    
-    if group_col!=None and group_col in x_vars:
-        x_vars.remove(group_col)    
-        print(f"[CHECK] gruop col {group_col} removed from x_vars!\n")
+    x_vars_ctrl=x_vars.copy()    
+    print(f"[NUMBER CHECK1] x_vars:{len(x_vars)}, x_vars_ctrl:{len(x_vars_ctrl)}")
 
+    if group_col!=None and group_col in x_vars_ctrl:
+        x_vars_ctrl.remove(group_col)    
+        print(f"[CHECK] gruop col {group_col} removed from x_vars!\n")
+   
     # collect all vars :
-    all_vars=x_vars+[y_var]
+    all_vars=x_vars_ctrl+[y_var]
     if key_vars!=None:
         all_vars+=key_vars    
     print(f"[CHECK] isna False in all {len(all_vars)} vars : {df[all_vars].isna().value_counts(dropna=False)}\n")
@@ -229,8 +332,9 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
     
     if to_fillna0==True and key_vars!=None:
         df[key_vars]=df[key_vars].fillna(0)
-        
-    formula=write_formula(df=df, x_vars=x_vars, y_var=y_var, key_vars=key_vars, group_col=group_col)
+    
+    formula=write_formula(df=df, x_vars=x_vars_ctrl, y_var=y_var, key_vars=key_vars, group_col=group_col)
+    print(f"[NUMBER CHECK2] x_vars:{len(x_vars)}, x_vars_ctrl:{len(x_vars_ctrl)}")
     
     model=smf.ols(formula, data=df).fit()
     summary=model.summary()
@@ -247,6 +351,7 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
             display(df_ttest)
             
     return df, formula, model
+
 
 
 
@@ -775,7 +880,7 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
 
     print("\n","basic model".center(100,"="),"\n")
     df, formula, model_basic=build_model (df_input=df_input,
-            x_vars=x_vars, key_vars=None, #*
+            x_vars=x_vars, key_vars=None, #*基础模型中部添加策略变量！
             to_fillna0=to_fillna0,
             y_var=y_var, group_col=None, #*
             # outpath_folder=output_folder, 
@@ -837,4 +942,5 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     
     
     return 
+
 

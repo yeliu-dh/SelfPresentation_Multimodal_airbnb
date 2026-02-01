@@ -215,7 +215,7 @@ def split_change_stable(path_Q1, path_Q2, year:int,threshold_text_sim=0.85,
         
         f"-BIO change in Q2(include new host);\n"
         f"-PIC change in Q2(include new host);\n"
-        f"=> ADD 'sp_changed','old_host_sp_changed'\n\n"
+        f"=> ADD 'sp_changed','old_host_sp_changed', regardless of status\n\n"
         
         f"==> ADD 'is_changed'==1\n")
 
