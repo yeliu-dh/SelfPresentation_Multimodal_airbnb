@@ -198,30 +198,32 @@ def run_zsc(
 
 
 
-
-def merge_by_host_about(path_df_zsc, path_df_filtered, 
-                        save=False, output_folder=None):
+def merge_by_host_about(path_df_zsc, path_df_filtered, desired_items_order=None, 
+            save=False, output_folder=None, filename=None):
     
     df_zsc=pd.read_csv(path_df_zsc)
     # print(f"[INFO] df_zsc columns :{df_zsc.columns}")
     
-    items_cols=[c for c in df_zsc.columns if c not in ["id", 'text','lang']]
-    
+    # text+items
+    cols_to_merge=[c for c in df_zsc.columns if c not in ["id",'lang']]
+    df_zsc_to_merge=df_zsc.copy()[cols_to_merge]
+    if desired_items_order : 
+      desired_order=["text"]+desired_items_order
+      df_zsc_to_merge=df_zsc_to_merge[desired_order]
+
     df_filtered=pd.read_csv(path_df_filtered)
     print(f"[INFO] df_zsc :{len(df_zsc)}; df_filtered: {len(df_filtered)}!")
-    print(f"[CHECK] items cols:{items_cols}\n")
+    print(f"[CHECK]cols to merge :{cols_to_merge}\n")
     
     print("merge items scores back to df_filtered".center(100,'-'))
-    df_items=df_filtered.merge(df_zsc, left_on="host_about", right_on="text", how='left')
+    df_items=df_filtered.merge(df_zsc_to_merge, left_on="host_about", right_on="text", how='left')
     print(f"[INFO] len df items : {len(df_items)}\n"
-          f"no match rows stay NaN on items cols!!")
+        f"no match rows stay NaN on items cols!!")
 
     if save:
-        if output_folder ==None:
-            output_folder=os.path.dirname(path_df_filtered)
         os.makedirs(output_folder, exist_ok=True)
-        
-        filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items.csv")
+        if filename==None:
+          filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items.csv")
         
         outpath_df_items=os.path.join(output_folder,filename) 
         df_items.to_csv(outpath_df_items, index=False)
@@ -229,3 +231,34 @@ def merge_by_host_about(path_df_zsc, path_df_filtered,
         print(f"✅[SAVE] df merged with items scores saved to {outpath_df_items}!\n"
               f" ready for fa!")    
     return df_items
+
+# def merge_by_host_about(path_df_zsc, path_df_filtered, 
+#                         save=False, output_folder=None):
+    
+#     df_zsc=pd.read_csv(path_df_zsc)
+#     # print(f"[INFO] df_zsc columns :{df_zsc.columns}")
+    
+#     items_cols=[c for c in df_zsc.columns if c not in ["id", 'text','lang']]
+    
+#     df_filtered=pd.read_csv(path_df_filtered)
+#     print(f"[INFO] df_zsc :{len(df_zsc)}; df_filtered: {len(df_filtered)}!")
+#     print(f"[CHECK] items cols:{items_cols}\n")
+    
+#     print("merge items scores back to df_filtered".center(100,'-'))
+#     df_items=df_filtered.merge(df_zsc, left_on="host_about", right_on="text", how='left')
+#     print(f"[INFO] len df items : {len(df_items)}\n"
+#           f"no match rows stay NaN on items cols!!")
+
+#     if save:
+#         if output_folder ==None:
+#             output_folder=os.path.dirname(path_df_filtered)
+#         os.makedirs(output_folder, exist_ok=True)
+        
+#         filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items.csv")
+        
+#         outpath_df_items=os.path.join(output_folder,filename) 
+#         df_items.to_csv(outpath_df_items, index=False)
+        
+#         print(f"✅[SAVE] df merged with items scores saved to {outpath_df_items}!\n"
+#               f" ready for fa!")    
+#     return df_items

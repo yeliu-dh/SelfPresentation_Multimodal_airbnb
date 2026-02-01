@@ -338,26 +338,40 @@ def add_booking_rate_l30d(df):
 def add_booking_rate_l90d(df, df_nextQ):
     # no match / neg value stay nan in number_of_reviewsQ3
     
+    # 本季度为止累计评论数：number_of_reviews_till_Q
     df_reviews=df.copy()
     df_reviews=df_reviews.rename(columns={"number_of_reviews":'number_of_reviews_till_Q'})
-    
+
+    # 下季度为止累计评论数：number_of_reviews_till_nextQ
     reviews_nextQ=df_nextQ[['id','number_of_reviews']]
     reviews_nextQ.columns=['id','number_of_reviews_till_nextQ']
     
+    # merge
     df_reviews=df_reviews.merge(reviews_nextQ, left_on='id', right_on="id", how="left")
-    
+
+    # 计算本季度获得的评论数：number_of_reviews_nextQ
+    # 下季度无匹配或差值小于0 则number_of_reviews_nextQ为nan    
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_till_nextQ']-df_reviews["number_of_reviews_till_Q"]
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_nextQ'].apply(lambda x : np.nan if x<0 else x)
+        
+    print(f"[CHECK] no match on reviews_nextQ : {len(df_reviews[df_reviews['number_of_reviews_nextQ'].isna()])};\n"
+          f"NO ava90 this Q: {len(df_reviews[df_reviews['availability_90']==0])}")
     
+    #若nextQ为nan，则booking自动为nan
+    # df_reviews['booking_rate_l90d'] = df_reviews.apply(
+    #             lambda row: min(row['number_of_reviews_nextQ'] / row['availability_90'], 1.0)
+    #             if row['availability_90'] > 0 else None, #直接去掉了不开放房东的行！不需要再在ava上drop0
+    #             axis=1
+    #         )
     
-    print(f"no match in 'number_of_reviews_nextQ': {df_reviews.number_of_reviews_nextQ.isna().sum()}\n"
-        f"availability==0=>nan: {len(df_reviews[df_reviews['availability_90']==0])}"
-          )
-    df_reviews['booking_rate_l90d'] = df_reviews.apply(
-                lambda row: min(row['number_of_reviews_nextQ'] / row['availability_90'], 1.0)
-                if row['availability_90'] > 0 else None,
-                axis=1
-            )
+    #向量化写法，速度更快：
+    df_reviews['booking_rate_l90d'] = (
+    df_reviews['number_of_reviews_nextQ'] / df_reviews['availability_90']
+        ).clip(upper=1.0)
+
+    # 对 availability_90 == 0 或 number_of_reviews_nextQ 为 NaN 的行，也会自然是 NaN
+    df_reviews.loc[df_reviews['availability_90'] == 0, 'booking_rate_l90d'] = np.nan
+
     return df_reviews
 
 
@@ -446,7 +460,7 @@ def categorize_property(ptype):
 
 def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","availability_90"], 
                         get_booking_rate_l30d=False, filtrate_by_booking_rate_l30d=False,#无输入时默认不按照booking筛选 
-                        get_booking_rate_l90d=True, filtrate_by_booking_rate_l90d=False,
+                        get_booking_rate_l90d=True, filtrate_by_booking_rate_l90d=True,
                         obj_vars=["room_type", 'property_type',"minimum_nights","instant_bookable"], 
                         threshold_km:int=None, 
                         output_folder="mod_results", filename="listings_filtered.csv"):
@@ -468,8 +482,8 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
         
         f"3) if 'add_booking_rate_l90d':\n"
         f" ADD number_of_reviews_nextQ, booking_rate_l90d \n"
-        f" if host no longer exists in df_nextQ or substraction get negative value, number_of_reviews_nextQ=> nan \n"
-        f" booking_rate_l30d = number_of_reviews_nextQ (Q3)/ availability_90 (Q2)\n"
+        f" if host no longer exists in df_nextQ / substraction get negative value/ ava_90_thisQ==0, then number_of_reviews_nextQ=> nan \n"
+        f" 1 >= booking_rate_l30d  = number_of_reviews_nextQ (Q3)/ availability_90 (Q2)\n"
         f" if filter False: no filter on booking_rate, ava, nb_reviews\n\n"
 
         
@@ -481,7 +495,7 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
         
         f"5) filter : dropna on vars ==> desc df_filtered \n\n"
         f"desc statistique :{', '.join(obj_vars)} \n\n"
-        
+                
         f"6) if enter 'threshold_km':\n"
         f"location :'latitude','longitude': ADD 'is_within_Xkm'\n"
         f"calculate  distance bewtween listing and its cloest venue. if it's under {threshold_km} km, 'is_within_{threshold_km} km' ==1, else 0.\n\n"
@@ -502,9 +516,10 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
         vars_to_dropna.extend(["number_of_reviews_l30d","availability_30","booking_rate_l30d"])
     
     if get_booking_rate_l90d==True :
-        if df_nextQ.empty:
+        if  df_nextQ is  None or df_nextQ.empty:
             print(f"[CHECK] need df_nextQ!!!")
         else :
+            print(f"[CHECK] get booking_rate_l90d!")
             df=add_booking_rate_l90d(df, df_nextQ)
         vars_to_dropna.extend(["number_of_reviews_nextQ","availability_90","booking_rate_l90d"])
     
@@ -548,7 +563,6 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
     df_filtered=filter_df(df,vars=vars_to_dropna, 
                           filtrate_by_booking_rate_l30d=filtrate_by_booking_rate_l30d,
                           filtrate_by_booking_rate_l90d=filtrate_by_booking_rate_l90d)
-    
     
     desc_catORnum(df=df_filtered, vars=vars_to_dropna) 
 
@@ -762,6 +776,8 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
         else:
             sig = ''
         result.loc[col, 'significance'] = sig
+        
+        
     if group_col=='host_is_superhost':
         
         result = result.rename(columns={'t':"Superhôte",
@@ -815,7 +831,6 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
     
 
     title= f"Distribution de {y_var}" 
-    
     if y_var=="booking_rate_l30d":
         title=f"Distribution de Taux de réservation" # no touch to y_var!
 
@@ -824,19 +839,14 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
         print(f'[INFO] groups of {group_col}:{groups}')
         
         group_title=f" ({group_col} {groups[0]} vs {groups[1]})" #开头空一格
-        
         if group_col=='host_is_superhost':
             group_title= " (Superhôtes vs Autres)"
-        
         title+=group_title
 
 
-        # for i, val in enumerate(["t", "f"]):
         for i, val in enumerate(groups):
             group_data = df[df[group_col]==val][y_var].dropna()
-            # print(i, group_data)
-            label=i
-
+            label=val
             if group_col=="host_is_superhost":
                 label = "Superhôtes" if val=="t" else "Autres"
             
@@ -854,13 +864,15 @@ def plot_distribution(df, group_col=None, y_var='booking_rate_l30d',
     plt.ylabel("Densité")
     plt.title(title)
     plt.legend()
+    
     if save: 
         if filename==None:
             filename=f"host_performance_on_{y_var}.jpg"
         outpath_kde=os.path.join(output_folder,filename)
         plt.savefig(outpath_kde, dpi=300)
-        plt.show()
         print(f"✅ [SAVE] plot distribution saved to {outpath_kde}!")
+    
+    plt.show()
         
     return  
 

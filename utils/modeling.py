@@ -88,15 +88,6 @@ def check_vif (df, x_vars, y_var, key_vars, group_col):
 
 
 
-# def save_summary_as_latex(summary, output_folder, tex_filename):
-#     latex_str =summary.as_latex()
-#     outpath_summary=os.path.join(output_folder, 'latex', tex_filename)
-
-#     with open(outpath_summary, "w") as f:
-#         f.write(latex_str)
-#         print(f"[SAVE] model summary saved to {outpath_summary}!")
-#     return 
-
 
 def p_to_sig(p):#!= get_term_sig
     if p < 0.001:
@@ -109,29 +100,108 @@ def p_to_sig(p):#!= get_term_sig
         return ''
 
 
+# def get_group_effect(df, model, key_var, group_col):
+#     if pd.api.types.is_numeric_dtype(df[group_col]):# 数值型
+#         interaction_term = f"{group_col}:{key_var}"
+#     else :
+#         interaction_term = f"C({group_col}):{key_var}"
+#         # interaction_term = f"C({group_col})[T.t]:{key_var}"#不总是t/f
+
+#     # 构造一个 系数选择向量 c, 所有terms归零
+#     lin_comb = np.zeros(len(model.params))
+    
+#     # 标记tac主效应和交互项的位置：检验1 × β_main + 1 × β_interaction
+#     lin_comb[model.params.index.get_loc(key_var)] = 1
+#     lin_comb[model.params.index.get_loc(interaction_term)] = 1
+
+#     # t 检验
+#     t_res = model.t_test(lin_comb)
+#     print(f"{interaction_term}\n" 
+#           f"coef : {t_res.effect}; pval :{t_res.pvalue:.3f} \n"
+#         #   f"{t_res}\n"
+#         )
+
+#     return t_res
+
+
+
+def get_group_effect_df(df, model, key_var, group_col):
+    """
+    计算多分类 group_col 下，每一组的 key_var 组内效应（coef + p-value）
+    """
+    results = {}
+
+    params = model.params
+    param_names = params.index.tolist()
+
+    # 所有分组水平
+    groups = df[group_col].dropna().unique()
+    group_labels='/'.join([str(g) for g in groups])
+    
+    print(f"x {group_labels}")
+    for g in groups:
+        # label = str(g)  # 👈 默认标签（关键）
+        # print('group label:',label)
+        
+        # 初始化线性组合向量
+        lin_comb = np.zeros(len(params))
+
+        # 主效应 β_key_var
+        lin_comb[param_names.index(key_var)] = 1
+
+        # 非基准组：加上交互项
+        interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+
+        if interaction_term in param_names:
+            lin_comb[param_names.index(interaction_term)] = 1
+            is_base = False
+        else:
+            # 没有交互项 → 基准组
+            is_base = True
+
+        # t-test（delta method）
+        t_res = model.t_test(lin_comb)
+
+        results[g] = {
+            "is_base": is_base,
+            "coef": float(t_res.effect),
+            "se": float(t_res.sd),
+            "t": float(t_res.tvalue),
+            "pval": float(t_res.pvalue),
+            "sig":p_to_sig(float(t_res.pvalue))
+        }
+    # return t_res
+    return pd.DataFrame(results).T
+
+
+
+
+
 def get_group_effect(df, model, key_var, group_col):
-    if pd.api.types.is_numeric_dtype(df[group_col]):# 数值型
-        interaction_term = f"{group_col}:{key_var}"
-    else :
-        interaction_term = f"C({group_col})[T.t]:{key_var}"
-
+    """
+    对于某一个key_var(tactic)，一个group_col下不同类别的真实效应和显著性，
+    t_res用于画图
     
-    
-    # 构造一个 系数选择向量 c, 所有terms归零
-    lin_comb = np.zeros(len(model.params))
-    
-    # 标记tac主效应和交互项的位置：检验1 × β_main + 1 × β_interaction
-    lin_comb[model.params.index.get_loc(key_var)] = 1
-    lin_comb[model.params.index.get_loc(interaction_term)] = 1
+    """
+    params = model.params
+    param_names = params.index.tolist()
+    results = {}
+    groups = df[group_col].dropna().unique()
 
-    # t 检验
-    t_res = model.t_test(lin_comb)
-    print(f"{interaction_term}\n" 
-          f"coef : {t_res.effect}; pval :{t_res.pvalue:.3f} \n"
-        #   f"{t_res}\n"
-        )
+    for g in groups:
+        lin_comb = np.zeros(len(params))
+        # 主效应
+        lin_comb[param_names.index(key_var)] = 1
+        # 交互项（若存在）
+        interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+        if interaction_term in param_names:
+            lin_comb[param_names.index(interaction_term)] = 1
 
-    return t_res
+        t_res = model.t_test(lin_comb)
+        results[g] = t_res
+
+    return results
+
 
 
 
@@ -172,7 +242,9 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
     
     if group_col:
         for k_var in key_vars:
-            t_res=get_group_effect(df, model, key_var=k_var, group_col=group_col)            
+            print(k_var)
+            df_ttest=get_group_effect_df(df, model, key_var=k_var, group_col=group_col)            
+            display(df_ttest)
             
     return df, formula, model
 
@@ -339,7 +411,7 @@ def plot_key_var(df_input, x_vars, y_var, tactics_vars,
     df[tactics_vars]=df[tactics_vars].fillna(0)
     formula=write_formula(df=df, x_vars=x_vars, y_var=y_var, key_vars=tactics_vars, group_col=group_col)
 
-    #-----------------------处理变量名！（无法识别accent）-----------------------    
+    #-----------------------处理变量名！（无法识别accent!）-----------------------    
     # rename_tactics_map={"ouverture_pondéré":"openness",
     #                     "authenticité_pondéré":"authenticity",
     #                     "sociabilité_pondéré":"sociability",
@@ -431,36 +503,31 @@ def plot_key_var(df_input, x_vars, y_var, tactics_vars,
         fig = ax.figure
 
     # 情况 A：有分组，多条线
-    if group_col is not None:
-        # for g in groups:
-        #     group_df = predict_df[predict_df[group_col] == g]
-        #     label = str(g)
+    if group_col is not None:      
+        group_tres = get_group_effect(
+            df=df,
+            model=model,
+            key_var=tactic,
+            group_col=group_col
+        )
+        # group_df = predict_df[predict_df[group_col] == g]
+            # # 取对应的显著性
+            # if g == "t":
+            #     # term = f"C({group_col})[T.t]:{tactic}" # 直接取了交互项的sig，但是t组应该是主效应+交互项
+            #     t_res=get_group_effect(df=df, model=model, key_var=tactic, group_col=group_col)         
+            #     sig=p_to_sig(t_res.pvalue)
+                
+            # else:
+            #     term = tactic  # 或者 main effect
+            #     sig = get_term_sig(model, term)
             
-        #     if group_col=="host_is_superhost":
-        #         label= f'Superhôtes' if g == "t" else f'Autres'      
-        
-            # ax.plot(group_df[tactic], group_df['predicted_booking_rate'],
-            #         label=label)
-            # ax.fill_between(group_df[tactic],
-            #                 group_df['ci_lower'], group_df['ci_upper'],
-            #                 alpha=0.2)
-
-        
-        
         for g in groups:
             group_df = predict_df[predict_df[group_col] == g]
-            
-            # 取对应的显著性
-            if g == "t":
-                # term = f"C({group_col})[T.t]:{tactic}" # 直接取了交互项的sig，但是t组应该是主效应+交互项
-                t_res=get_group_effect(df=df, model=model, key_var=tactic, group_col=group_col)         
-                sig=p_to_sig(t_res.pvalue)
-                
-            else:
-                term = tactic  # 或者 main effect
-                sig = get_term_sig(model, term)
+            t_res = group_tres[g]
+            sig = p_to_sig(t_res.pvalue)#组内显著性
+            label = str(g) 
 
-            if group_col=="host_is_superhost":
+            if group_col=="host_is_superhost":# personnaliser le label
                 label= f'Superhôtes' if g == "t" else f'Autres'
         
             label = f"{label} {sig}" if sig else label
@@ -490,7 +557,8 @@ def plot_key_var(df_input, x_vars, y_var, tactics_vars,
         term = f"C({group_col})[T.t]:{tactic}" 
     else : 
         term = tactic
-    sig=get_term_sig(model, term)
+    if term:    
+        sig=get_term_sig(model, term)
 
     # tactic_fr_map={"ouverture_pondéré":"ouverture",
     #         "authenticité_pondéré":"authenticité",
@@ -514,7 +582,7 @@ def plot_key_var(df_input, x_vars, y_var, tactics_vars,
         if group_col=="host_is_superhost":
             title=f"{tactic_fr} × Superhôte"# {sig}
         else : #其他分组变量
-            title=f"{tactic_fr} × {group_col}"# {sig}
+            title=f"{tactic_fr} × {group_col}"#{sig}"# 仅两组之间可以显示sig？
     else :#无分组变量
         title=f"Tactique {tactic_fr} {sig}"
         
@@ -653,8 +721,6 @@ def get_booking_rate_l30d(df):
     desc_catORnum(df, vars=["booking_rate_l30d"])
 
     return 
-
-    
     
     
 def add_booking_rate_l90d(df, df_nextQ):
@@ -741,7 +807,8 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     models_dict = {
         "Basique": model_basic,
         "Tactiques  ": model_tactics,
-        "x Superhôte": model_interaction
+        # "x Superhôte": model_interaction
+        group_col:model_interaction
     }
     table_kp, table_ctrl=make_models_table(models_dict=models_dict, 
                     vars_kp=key_vars+[group_col], #+langue？ 
@@ -763,7 +830,7 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     layout_plots(df_input=df, x_vars=x_vars,y_var=y_var,
             tactics_vars=key_vars,
             save=save_plots, 
-            group_col='host_is_superhost', 
+            group_col=group_col, 
             output_folder=output_folder,
             )
     
