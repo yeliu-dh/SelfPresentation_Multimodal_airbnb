@@ -318,17 +318,17 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
     # os.makedirs(outpath_folder, exist_ok=True)
     x_vars_ctrl=x_vars.copy()    
     print(f"[NUMBER CHECK1] x_vars:{len(x_vars)}, x_vars_ctrl:{len(x_vars_ctrl)}")
-
+    
+    #
     if group_col!=None and group_col in x_vars_ctrl:
         x_vars_ctrl.remove(group_col)    
         print(f"[CHECK] gruop col {group_col} removed from x_vars!\n")
    
     # collect all vars :
-    all_vars=x_vars_ctrl+[y_var]
+    all_vars=x_vars+[y_var]# 包括group_col
     if key_vars!=None:
         all_vars+=key_vars    
     print(f"[CHECK] isna False in all {len(all_vars)} vars : {df[all_vars].isna().value_counts(dropna=False)}\n")
-    
     
     if to_fillna0==True and key_vars!=None:
         df[key_vars]=df[key_vars].fillna(0)
@@ -427,6 +427,7 @@ def make_models_table(models_dict, vars_kp, ndigits=None,
                 lambda x: any(v in x for v in vars_kp)
             )
         ]
+
     params_ctrl=[v for v in model_interaction.params.index if v not in params_kp and v!="Intercept"]
     # print(f"params kp :{params_kp}")
     # print(f"params_ctrl:{params_ctrl}\n")
@@ -775,18 +776,19 @@ def layout_plots(df_input, x_vars, y_var, tactics_vars,
     )
 
     # save
-    os.makedirs(output_folder, exist_ok=True)
-    if filename is None:
-        if group_col!=None:
-            filename = f"{y_var}_tacticsX{group_col}_plots.jpg"
-        else : 
-            filename=f"{y_var}_tactics_plots.jpg"  
-              
-    outpath_plots = os.path.join(output_folder, filename)
-    if save:    
-        plt.savefig(outpath_plots, dpi=300, bbox_inches='tight')
-    
-        print(f"[SAVE] plots saved to {outpath_plots}!")
+    if output_folder is not None :
+        os.makedirs(output_folder, exist_ok=True)
+        if filename is None:
+            if group_col!=None:
+                filename = f"{y_var}_tacticsX{group_col}_plots.jpg"
+            else : 
+                filename=f"{y_var}_tactics_plots.jpg"  
+                
+        outpath_plots = os.path.join(output_folder, filename)
+        if save:    
+            plt.savefig(outpath_plots, dpi=300, bbox_inches='tight')
+        
+            print(f"[SAVE] plots saved to {outpath_plots}!")
     
     # show
     plt.show()
@@ -871,13 +873,16 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
         
         
     print("check output folder".center(100,'='))
-    os.makedirs(output_folder, exist_ok=True)
-    print(f"[INFO] results saved to {output_folder}!\n")
+    if output_folder is not None:
+        os.makedirs(output_folder, exist_ok=True)
+        print(f"[INFO] results saved to {output_folder}!\n")
     
     if run_vif:    
         print("vif".center(100, '='))    
         check_vif (df=df_input, x_vars=x_vars, y_var=y_var, key_vars=key_vars, group_col=None)
 
+    models_dict={}
+    
     print("\n","basic model".center(100,"="),"\n")
     df, formula, model_basic=build_model (df_input=df_input,
             x_vars=x_vars, key_vars=None, #*基础模型中部添加策略变量！
@@ -887,7 +892,8 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
             # tex_filename='ols_summary_basic.tex', 
             # save=save_models_summary
             )
-    
+    models_dict['Basique']=model_basic
+
     print("\n", "tactics model".center(100, '='),"\n")
     df, formula, model_tactics=build_model (df_input=df_input,
             x_vars=x_vars, key_vars=key_vars, 
@@ -897,24 +903,29 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
             # tex_filename='ols_summary_tactics.tex', 
             # save=save_models_summary
             )
+    models_dict['Tactiques']=model_basic
+
+    if group_col!=None:    
+        print("\n","interaction model".center(100,'='),"\n")
+        df, formula, model_interaction=build_model (df_input=df_input, 
+                x_vars=x_vars, key_vars=key_vars, 
+                to_fillna0=to_fillna0,
+                y_var=y_var, group_col=group_col, 
+                # outpath_folder=output_folder, 
+                # tex_filename='ols_summary_interaction.tex', 
+                # save=save_models_summary
+                )
+        models_dict[group_col]=model_interaction
+
     
-    print("\n","interaction model".center(100,'='),"\n")
-    df, formula, model_interaction=build_model (df_input=df_input, 
-            x_vars=x_vars, key_vars=key_vars, 
-            to_fillna0=to_fillna0,
-            y_var=y_var, group_col=group_col, 
-            # outpath_folder=output_folder, 
-            # tex_filename='ols_summary_interaction.tex', 
-            # save=save_models_summary
-            )
+    print("\n","models table".center(100,'=')) 
+    # models_dict = {
+    #     "Basique": model_basic,
+    #     "Tactiques  ": model_tactics,
+    #     # "x Superhôte": model_interaction
+    #     group_col:model_interaction
+    # }
     
-    print("models table".center(100,'=')) 
-    models_dict = {
-        "Basique": model_basic,
-        "Tactiques  ": model_tactics,
-        # "x Superhôte": model_interaction
-        group_col:model_interaction
-    }
     table_kp, table_ctrl=make_models_table(models_dict=models_dict, 
                     vars_kp=key_vars+[group_col], #+langue？ 
                     ndigits=ndigits,
@@ -931,13 +942,14 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
             output_folder=output_folder,
             filename=None)
     
-    print("interaction plots".center(100,"="))
-    layout_plots(df_input=df, x_vars=x_vars,y_var=y_var,
-            tactics_vars=key_vars,
-            save=save_plots, 
-            group_col=group_col, 
-            output_folder=output_folder,
-            )
+    if group_col is not None:
+        print("interaction plots".center(100,"="))
+        layout_plots(df_input=df, x_vars=x_vars,y_var=y_var,
+                tactics_vars=key_vars,
+                save=save_plots, 
+                group_col=group_col, 
+                output_folder=output_folder,
+                )
     
     
     
