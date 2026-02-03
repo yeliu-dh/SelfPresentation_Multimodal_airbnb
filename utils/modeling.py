@@ -22,48 +22,132 @@ from utils.io import save_csv_as_latex
 from utils.preprocess_listings import desc_catORnum
 
 
+# def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
+#     # y not in x:
+#     x_vars_ctrl=x_vars.copy()
+    
+#     if y_var in x_vars_ctrl:
+#         x_vars_ctrl.remove(y_var)
+#     if group_col !=None and group_col in x_vars_ctrl:
+#         x_vars_ctrl.remove(group_col)
+        
+#     # cat/num
+#     cat_vars = [var for var in x_vars_ctrl if not pd.api.types.is_numeric_dtype(df[var])]
+#     num_vars = [var for var in x_vars_ctrl if pd.api.types.is_numeric_dtype(df[var])]
+#     # print(f"[INFO] {len(cat_vars)} categorial vars: {cat_vars};\n"
+#     #         f"{len(num_vars)} numeric vars :{num_vars}\n")
+
+#     cat_vars_str = ' + '.join([f"C({c})" for c in cat_vars])
+#     num_vars_str = ' + '.join(num_vars)
+
+#     formula = f"{y_var} ~ {cat_vars_str.strip()} + {num_vars_str.strip()}"
+
+#     # init    
+#     key_vars_str=" "
+#     if key_vars != None:
+#         key_vars_str=' + '.join(key_vars)#避免无tactics输入
+    
+#     if group_col !=None and key_vars_str.strip():
+#         # print(f'Interaction item : {group_col}!')
+#         # print(f"BEFOR:{key_vars_str}")
+#         if not pd.api.types.is_numeric_dtype(df[group_col]):# group_col cat
+#             key_vars_str=f"C({group_col}) * ({key_vars_str})"
+#         else : 
+#             key_vars_str=f"{group_col} * ({key_vars_str})"
+#         # print(f"AFTER:{key_vars_str}\n")
+
+#     if key_vars_str.strip():#如果key_vars_str exists:
+#         formula +=f"+ {key_vars_str.strip()}"
+#         # f"({y_var} ~ {cat_vars_str.strip()} + {num_vars_str.strip()} + {key_vars_str.strip()})"
+    
+#     print(f"[INFO] formula :\n {formula}\n")
+    
+#     return formula 
+
+
+
 def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
-    # y not in x:
+    ## 3 CASES
+    # -key vars, - group_cols
+    # +key vars, - group_cols
+    # +key vars, + group_cols
+    
+    print(f"{'+' if key_vars is not None else '-'}key_vars ; "
+          f"{'+' if group_col is not None else '-'} group_cols")
+    
+    # copy:
     x_vars_ctrl=x_vars.copy()
     
+    # key_vars:
+    if key_vars is not None:
+        x_vars_ctrl=[x for x in x_vars_ctrl if x not in key_vars]
+        # print(f'x after delet key_vars:{x_vars_ctrl}')
+        print(f"remove key_vars in x_vars")
+        
+
+    ##  group_col:
+    if group_col is not None:
+        # type:
+        if not isinstance(group_col, list):
+            group_col=[group_col]
+        print(f'LIST group_col:{group_col}')   
+        # clean:
+        x_vars_ctrl=[v for v in x_vars if v not in group_col]  
+        print(f"remove group_col in x_vars")
+
+    # y_var :
     if y_var in x_vars_ctrl:
         x_vars_ctrl.remove(y_var)
-    if group_col !=None and group_col in x_vars_ctrl:
-        x_vars_ctrl.remove(group_col)
-        
-    # cat/num
+        print(f"remove y_vars in x_vars")
+    print(f"Final x_vars_ctrl :{x_vars_ctrl}\n")
+
+    # check type of vars :cat/num
     cat_vars = [var for var in x_vars_ctrl if not pd.api.types.is_numeric_dtype(df[var])]
     num_vars = [var for var in x_vars_ctrl if pd.api.types.is_numeric_dtype(df[var])]
-    # print(f"[INFO] {len(cat_vars)} categorial vars: {cat_vars};\n"
-    #         f"{len(num_vars)} numeric vars :{num_vars}\n")
-
+    
     cat_vars_str = ' + '.join([f"C({c})" for c in cat_vars])
     num_vars_str = ' + '.join(num_vars)
 
     formula = f"{y_var} ~ {cat_vars_str.strip()} + {num_vars_str.strip()}"
 
     # init    
-    key_vars_str=" "
+    key_vars_f=" "
+    
+    # 加入key_vars
     if key_vars != None:
         key_vars_str=' + '.join(key_vars)#避免无tactics输入
-    
-    if group_col !=None and key_vars_str.strip():
-        # print(f'Interaction item : {group_col}!')
-        # print(f"BEFOR:{key_vars_str}")
-        if not pd.api.types.is_numeric_dtype(df[group_col]):# group_col cat
-            key_vars_str=f"C({group_col}) * ({key_vars_str})"
-        else : 
-            key_vars_str=f"{group_col} * ({key_vars_str})"
-        # print(f"AFTER:{key_vars_str}\n")
+        key_vars_f+=key_vars_str
 
-    if key_vars_str.strip():#如果key_vars_str exists:
-        formula +=f"+ {key_vars_str.strip()}"
+    # 若有group_col, 加入交互项
+    group_col_str=" "
+    if group_col is not None and key_vars_str.strip():
+        for g in group_col:
+            if not pd.api.types.is_numeric_dtype(df[g]):
+                group_col_str+=f"C({g})*"
+            else :
+                group_col_str+=f"{g}*"
+        print(f"group col str: {group_col_str}")
+            
+        if group_col_str.strip():
+            key_vars_f+=f" + {group_col_str.strip()} ({key_vars_str})"
+            print(f"key_vars_f:{key_vars_f}")
+            
+            # if not pd.api.types.is_numeric_dtype(df[g]):# group_col cat
+            #     key_vars_f+=f" + C({g}) * ({key_vars_str})"
+            # else : 
+            #     key_vars_f+=f" + {g} * ({key_vars_str})"
+    
+    # 把key_vars_str (+交互项)加入formula
+    if key_vars_f.strip() :#如果key_vars_str exists:
+        formula +=f"+ {key_vars_f.strip()}"
+        # if group_col_str.strip():
+        #     formula +=f"+ {key_vars_f.strip()}*{group_col_str.strip()}"
+        
         # f"({y_var} ~ {cat_vars_str.strip()} + {num_vars_str.strip()} + {key_vars_str.strip()})"
     
     print(f"[INFO] formula :\n {formula}\n")
     
     return formula 
-
 
 
 # def write_formula(df, x_vars, y_var, key_vars=None, group_col=None):
@@ -143,16 +227,21 @@ def check_vif (df, x_vars, y_var, key_vars, group_col):
 
 
 
-def p_to_sig(p):#!= get_term_sig
-    if p < 0.001:
-        return '***'
-    elif p < 0.01:
-        return '**'
-    elif p < 0.05:
-        return '*'
-    else:
-        return ''
-
+# def p_to_sig(p):#!= get_term_sig
+#     if p < 0.001:
+#         return '***'
+#     elif p < 0.01:
+#         return '**'
+#     elif p < 0.05:
+#         return '*'
+#     else:
+#         return ''
+def p_to_sig(p):
+    if p < 0.001: return '***'
+    elif p < 0.01: return '**'
+    elif p < 0.05: return '*'
+    elif p < 0.1: return '.'
+    else: return ''
 
 # def get_group_effect(df, model, key_var, group_col):
 #     if pd.api.types.is_numeric_dtype(df[group_col]):# 数值型
@@ -179,54 +268,204 @@ def p_to_sig(p):#!= get_term_sig
 
 
 
+# def get_group_effect_df(df, model, key_var, group_col):
+#     """
+#     计算多分类 group_col 下，每一组的 key_var（仅数值型！） 组内效应（coef + p-value）
+#     """
+#     results = {}
+
+#     params = model.params
+#     param_names = params.index.tolist()
+
+#     # 所有分组水平
+#     # group_col==str, not list!
+#     groups = df[group_col].dropna().unique()
+#     group_labels='/'.join([str(g) for g in groups])
+    
+#     print(f"x {group_labels}")
+#     for g in groups:
+#         # label = str(g)  # 👈 默认标签（关键）
+#         # print('group label:',label)
+        
+#         # 初始化线性组合向量
+#         lin_comb = np.zeros(len(params))
+
+#         # 主效应 β_key_var
+#         lin_comb[param_names.index(key_var)] = 1
+
+#         # 非基准组：加上交互项
+#         interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+       
+#         if interaction_term in param_names:
+#             lin_comb[param_names.index(interaction_term)] = 1
+#             is_base = False
+#         else:
+#             # 没有交互项 → 基准组
+#             is_base = True
+
+#         # t-test（delta method）
+#         t_res = model.t_test(lin_comb)
+
+#         results[g] = {
+#             "is_base": is_base,
+#             "coef": float(t_res.effect),
+#             "se": float(t_res.sd),
+#             "t": float(t_res.tvalue),
+#             "pval": float(t_res.pvalue),
+#             "sig":p_to_sig(float(t_res.pvalue))
+#         }
+#     # return t_res
+#     return pd.DataFrame(results).T
+
+
+
+
+# def get_group_effect_df(df, model, key_var, group_col):
+#     """
+#     计算多分类 group_col 下，每一组的 key_var 组内效应（coef + p-value）
+#     key_var 可以是数值型或者分类变量
+#     """
+#     import numpy as np
+#     import pandas as pd
+
+#     def p_to_sig(p):
+#         if p < 0.001: return '***'
+#         elif p < 0.01: return '**'
+#         elif p < 0.05: return '*'
+#         elif p < 0.1: return '.'
+#         else: return ''
+
+#     results = {}
+
+#     params = model.params
+#     param_names = params.index.tolist()
+
+#     # 所有分组水平
+#     groups = df[group_col].dropna().unique()
+    
+#     for g in groups:
+#         lin_comb = np.zeros(len(params))
+#         is_base = True
+
+#         # 处理 key_var
+#         if pd.api.types.is_numeric_dtype(df[key_var]):
+#             # 数值型：主效应
+#             if key_var in param_names:
+#                 lin_comb[param_names.index(key_var)] = 1
+#             # 数值型交互项
+#             interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+#             if interaction_term in param_names:
+#                 lin_comb[param_names.index(interaction_term)] = 1
+#                 is_base = False
+#         else:
+#             # 分类变量：主效应，选第一个非基准水平作为 effect coding
+#             cat_levels = df[key_var].dropna().unique()
+#             for lvl in cat_levels:
+#                 main_term = f"C({key_var})[T.{lvl}]"
+#                 if main_term in param_names:
+#                     lin_comb[param_names.index(main_term)] = 1
+#                     break  # 只加第一个 level 的主效应
+
+#             # 分类变量交互项
+#             for lvl in cat_levels:
+#                 interaction_term = f"C({group_col})[T.{g}]:C({key_var})[T.{lvl}]"
+#                 if interaction_term in param_names:
+#                     lin_comb[param_names.index(interaction_term)] = 1
+#                     is_base = False
+#                     break  # 一般取第一个非基准 level
+
+#         # t-test（delta method）
+#         t_res = model.t_test(lin_comb)
+
+#         results[g] = {
+#             "is_base": is_base,
+#             "coef": float(t_res.effect),
+#             "se": float(t_res.sd),
+#             "t": float(t_res.tvalue),
+#             "pval": float(t_res.pvalue),
+#             "sig": p_to_sig(float(t_res.pvalue))
+#         }
+
+#     return pd.DataFrame(results).T
+
+import numpy as np
+import pandas as pd
+from itertools import product
+
 def get_group_effect_df(df, model, key_var, group_col):
     """
-    计算多分类 group_col 下，每一组的 key_var 组内效应（coef + p-value）
+    计算每个 key_var × group_col 组合的效应（coef + se + t + pval）
+    df: 原始数据
+    model: statsmodels OLS 结果对象
+    key_var: 变量名（可以是数值型或分类变量）
+    group_col: 分组变量名（必须是分类）
+    
+    返回: DataFrame，每行是一个组合
     """
-    results = {}
+    def p_to_sig(p):
+        if p < 0.001: return '***'
+        elif p < 0.01: return '**'
+        elif p < 0.05: return '*'
+        elif p < 0.1: return '.'
+        else: return ''
 
     params = model.params
     param_names = params.index.tolist()
-
-    # 所有分组水平
-    groups = df[group_col].dropna().unique()
-    group_labels='/'.join([str(g) for g in groups])
     
-    print(f"x {group_labels}")
-    for g in groups:
-        # label = str(g)  # 👈 默认标签（关键）
-        # print('group label:',label)
-        
-        # 初始化线性组合向量
+    # 分组水平
+    group_levels = df[group_col].dropna().unique()
+    
+    # key_var 水平
+    if pd.api.types.is_numeric_dtype(df[key_var]):
+        key_levels = [1]  # 数值型只用 1 表示加上主效应
+    else:
+        key_levels = df[key_var].dropna().unique()
+    
+    # 保存结果
+    rows = []
+
+    # 遍历所有组合
+    for g, k in product(group_levels, key_levels):
         lin_comb = np.zeros(len(params))
+        is_base = True
 
-        # 主效应 β_key_var
-        lin_comb[param_names.index(key_var)] = 1
-
-        # 非基准组：加上交互项
-        interaction_term = f"C({group_col})[T.{g}]:{key_var}"
-
-        if interaction_term in param_names:
-            lin_comb[param_names.index(interaction_term)] = 1
-            is_base = False
+        # 数值型 key_var
+        if pd.api.types.is_numeric_dtype(df[key_var]):
+            # 主效应
+            if key_var in param_names:
+                lin_comb[param_names.index(key_var)] = 1
+            # 交互项
+            interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+            if interaction_term in param_names:
+                lin_comb[param_names.index(interaction_term)] = 1
+                is_base = False
         else:
-            # 没有交互项 → 基准组
-            is_base = True
+            # 分类 key_var
+            # 主效应：非基准水平
+            main_term = f"C({key_var})[T.{k}]"
+            if main_term in param_names:
+                lin_comb[param_names.index(main_term)] = 1
+            # 交互项
+            interaction_term = f"C({group_col})[T.{g}]:C({key_var})[T.{k}]"
+            if interaction_term in param_names:
+                lin_comb[param_names.index(interaction_term)] = 1
+                is_base = False
 
-        # t-test（delta method）
+        # t-test
         t_res = model.t_test(lin_comb)
 
-        results[g] = {
+        rows.append({
+            group_col: g,
+            key_var: k,
             "is_base": is_base,
             "coef": float(t_res.effect),
             "se": float(t_res.sd),
             "t": float(t_res.tvalue),
             "pval": float(t_res.pvalue),
-            "sig":p_to_sig(float(t_res.pvalue))
-        }
-    # return t_res
-    return pd.DataFrame(results).T
+            "sig": p_to_sig(float(t_res.pvalue))
+        })
 
+    return pd.DataFrame(rows)
 
 
 
@@ -237,23 +476,73 @@ def get_group_effect(df, model, key_var, group_col):
     t_res用于画图
     
     """
+   
+    # params = model.params
+    # param_names = params.index.tolist()
+    # results = {}
+    # groups = df[group_col].dropna().unique()
+
+    # for g in groups:
+    #     lin_comb = np.zeros(len(params))
+    #     # 主效应
+    #     lin_comb[param_names.index(key_var)] = 1
+    #     # 交互项（若存在）
+    #     interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+    #     if interaction_term in param_names:
+    #         lin_comb[param_names.index(interaction_term)] = 1
+
+    #     t_res = model.t_test(lin_comb)
+    #     results[g] = t_res
+ 
+ 
     params = model.params
     param_names = params.index.tolist()
     results = {}
-    groups = df[group_col].dropna().unique()
 
-    for g in groups:
+    # 分组水平
+    group_levels = df[group_col].dropna().unique()
+    
+    # key_var 水平
+    if pd.api.types.is_numeric_dtype(df[key_var]):
+        key_levels = [1]  # 数值型只用 1 表示加上主效应
+    else:
+        key_levels = df[key_var].dropna().unique()
+    
+    # 保存结果
+    rows = []
+
+    # 遍历所有组合
+    for g, k in product(group_levels, key_levels):
         lin_comb = np.zeros(len(params))
-        # 主效应
-        lin_comb[param_names.index(key_var)] = 1
-        # 交互项（若存在）
-        interaction_term = f"C({group_col})[T.{g}]:{key_var}"
-        if interaction_term in param_names:
-            lin_comb[param_names.index(interaction_term)] = 1
+        is_base = True
 
+        # 数值型 key_var
+        if pd.api.types.is_numeric_dtype(df[key_var]):
+            # 主效应
+            if key_var in param_names:
+                lin_comb[param_names.index(key_var)] = 1
+            # 交互项
+            interaction_term = f"C({group_col})[T.{g}]:{key_var}"
+            if interaction_term in param_names:
+                lin_comb[param_names.index(interaction_term)] = 1
+                is_base = False
+        else:
+            # 分类 key_var
+            # 主效应：非基准水平
+            main_term = f"C({key_var})[T.{k}]"
+            if main_term in param_names:
+                lin_comb[param_names.index(main_term)] = 1
+            # 交互项
+            interaction_term = f"C({group_col})[T.{g}]:C({key_var})[T.{k}]"
+            if interaction_term in param_names:
+                lin_comb[param_names.index(interaction_term)] = 1
+                is_base = False
+
+        # t-test
         t_res = model.t_test(lin_comb)
         results[g] = t_res
 
+        
     return results
 
 
@@ -313,26 +602,25 @@ def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
                 # tex_filename='ols_summary.tex', 
                 # save=False
                 ):
-
-    df=df_input.copy()
-    # os.makedirs(outpath_folder, exist_ok=True)
+    # copy
+    df=df_input.copy()    
     x_vars_ctrl=x_vars.copy()    
     print(f"[NUMBER CHECK1] x_vars:{len(x_vars)}, x_vars_ctrl:{len(x_vars_ctrl)}")
-    
-    #
-    if group_col!=None and group_col in x_vars_ctrl:
-        x_vars_ctrl.remove(group_col)    
-        print(f"[CHECK] gruop col {group_col} removed from x_vars!\n")
+
    
-    # collect all vars :
+    # check all vars :
     all_vars=x_vars+[y_var]# 包括group_col
     if key_vars!=None:
-        all_vars+=key_vars    
-    print(f"[CHECK] isna False in all {len(all_vars)} vars : {df[all_vars].isna().value_counts(dropna=False)}\n")
+        all_vars.extend(key_vars)
+    print(all_vars)    
+    # print(f"[CHECK] isna False in all {len(all_vars)} vars : {df[all_vars].isna().value_counts(dropna=False)}\n")
     
+    
+    ## fillna
     if to_fillna0==True and key_vars!=None:
         df[key_vars]=df[key_vars].fillna(0)
     
+    # clean all vars in 'write formula':
     formula=write_formula(df=df, x_vars=x_vars_ctrl, y_var=y_var, key_vars=key_vars, group_col=group_col)
     print(f"[NUMBER CHECK2] x_vars:{len(x_vars)}, x_vars_ctrl:{len(x_vars_ctrl)}")
     
@@ -884,6 +1172,7 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     models_dict={}
     
     print("\n","basic model".center(100,"="),"\n")
+    # - key_vars, - group_col
     df, formula, model_basic=build_model (df_input=df_input,
             x_vars=x_vars, key_vars=None, #*基础模型中部添加策略变量！
             to_fillna0=to_fillna0,
@@ -895,6 +1184,7 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     models_dict['Basique']=model_basic
 
     print("\n", "tactics model".center(100, '='),"\n")
+    # + key_vars, - group_col
     df, formula, model_tactics=build_model (df_input=df_input,
             x_vars=x_vars, key_vars=key_vars, 
             to_fillna0=to_fillna0,
@@ -906,6 +1196,7 @@ def modeling_main(df_input, x_vars, y_var, key_vars, group_col,
     models_dict['Tactiques']=model_basic
 
     if group_col!=None:    
+        # + key_vars, + group_col
         print("\n","interaction model".center(100,'='),"\n")
         df, formula, model_interaction=build_model (df_input=df_input, 
                 x_vars=x_vars, key_vars=key_vars, 
