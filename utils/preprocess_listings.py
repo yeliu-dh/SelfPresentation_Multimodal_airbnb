@@ -786,7 +786,8 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
         desired_order=['Superhôte','Autres','ttest_p','significance']
         result=result[desired_order]    
         
-            
+    display(result)
+         
     # reorder:
 
     

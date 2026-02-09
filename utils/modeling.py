@@ -476,24 +476,6 @@ def get_group_effect(df, model, key_var, group_col):
     t_res用于画图
     
     """
-   
-    # params = model.params
-    # param_names = params.index.tolist()
-    # results = {}
-    # groups = df[group_col].dropna().unique()
-
-    # for g in groups:
-    #     lin_comb = np.zeros(len(params))
-    #     # 主效应
-    #     lin_comb[param_names.index(key_var)] = 1
-    #     # 交互项（若存在）
-    #     interaction_term = f"C({group_col})[T.{g}]:{key_var}"
-    #     if interaction_term in param_names:
-    #         lin_comb[param_names.index(interaction_term)] = 1
-
-    #     t_res = model.t_test(lin_comb)
-    #     results[g] = t_res
- 
  
     params = model.params
     param_names = params.index.tolist()
@@ -544,52 +526,6 @@ def get_group_effect(df, model, key_var, group_col):
 
         
     return results
-
-
-
-
-
-# def build_model (df_input, x_vars, key_vars=None, to_fillna0=False,
-#                 y_var='booking_rate_l30d', group_col=None, 
-                
-#                 # outpath_folder='mod_results', 
-#                 # tex_filename='ols_summary.tex', 
-#                 # save=False
-#                 ):
-#     df=df_input.copy()
-#     # os.makedirs(outpath_folder, exist_ok=True)
-    
-#     if group_col!=None and group_col in x_vars:
-#         x_vars.remove(group_col)    
-#         print(f"[CHECK] gruop col {group_col} removed from x_vars!\n")
-
-#     # collect all vars :
-#     all_vars=x_vars+[y_var]
-#     if key_vars!=None:
-#         all_vars+=key_vars    
-#     print(f"[CHECK] isna False in all {len(all_vars)} vars : {df[all_vars].isna().value_counts(dropna=False)}\n")
-    
-    
-#     if to_fillna0==True and key_vars!=None:
-#         df[key_vars]=df[key_vars].fillna(0)
-        
-#     formula=write_formula(df=df, x_vars=x_vars, y_var=y_var, key_vars=key_vars, group_col=group_col)
-    
-#     model=smf.ols(formula, data=df).fit()
-#     summary=model.summary()
-#     print(summary)
-    
-#     # if save==True:
-#     #     save_summary_as_latex(summary, output_folder=outpath_folder, 
-#     #                       tex_filename=tex_filename)
-    
-#     if group_col:
-#         for k_var in key_vars:
-#             print(k_var)
-#             df_ttest=get_group_effect_df(df, model, key_var=k_var, group_col=group_col)            
-#             display(df_ttest)
-            
-#     return df, formula, model
 
 
 
