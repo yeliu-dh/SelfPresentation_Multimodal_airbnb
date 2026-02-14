@@ -521,7 +521,7 @@ def get_group_effect(df, model, key_var, group_col):
                 is_base = False
 
         # t-test
-        t_res = model.t_test(lin_comb)
+        t_res = model.t_test(lin_comb)#检验该组效应的显著性
         results[g] = t_res
 
         
