@@ -1,0 +1,203 @@
+[
+  {
+    "img_path": "images/host_pic_paris_43258\\100004988.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 1,
+    "face_area_ratio": 0.12811851851851852,
+    "avg_face_prob": 0.9998550415039062,
+    "bbox_list": [
+      [
+        79,
+        48,
+        148,
+        142
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\100016075.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 3,
+    "face_area_ratio": 0.4192,
+    "avg_face_prob": 0.9998123645782471,
+    "bbox_list": [
+      [
+        0,
+        0,
+        95,
+        100
+      ],
+      [
+        64,
+        117,
+        146,
+        216
+      ],
+      [
+        172,
+        75,
+        225,
+        143
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\100032303.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 1,
+    "face_area_ratio": 0.22565925925925925,
+    "avg_face_prob": 0.9997673630714417,
+    "bbox_list": [
+      [
+        43,
+        55,
+        139,
+        174
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\100038205.jpg",
+    "host_id": "1",
+    "has_face": 0,
+    "nb_face": 0,
+    "face_area_ratio": 0,
+    "avg_face_prob": 0,
+    "bbox_list": []
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\10005781.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 6,
+    "face_area_ratio": 0.012088888888888889,
+    "avg_face_prob": 0.9172261655330658,
+    "bbox_list": [
+      [
+        23,
+        89,
+        33,
+        102
+      ],
+      [
+        124,
+        75,
+        133,
+        87
+      ],
+      [
+        138,
+        101,
+        147,
+        112
+      ],
+      [
+        116,
+        101,
+        125,
+        112
+      ],
+      [
+        42,
+        68,
+        50,
+        79
+      ],
+      [
+        60,
+        80,
+        68,
+        91
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\10006782.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 1,
+    "face_area_ratio": 0.004701234567901234,
+    "avg_face_prob": 0.9999837875366211,
+    "bbox_list": [
+      [
+        107,
+        60,
+        121,
+        77
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\10007993.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 1,
+    "face_area_ratio": 0.5623703703703704,
+    "avg_face_prob": 0.9990598559379578,
+    "bbox_list": [
+      [
+        41,
+        21,
+        187,
+        216
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\10008825.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 1,
+    "face_area_ratio": 0.2346074074074074,
+    "avg_face_prob": 1.0,
+    "bbox_list": [
+      [
+        72,
+        0,
+        179,
+        111
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\100089731.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 2,
+    "face_area_ratio": 0.29457777777777777,
+    "avg_face_prob": 0.9966554045677185,
+    "bbox_list": [
+      [
+        75,
+        11,
+        182,
+        146
+      ],
+      [
+        187,
+        97,
+        205,
+        123
+      ]
+    ]
+  },
+  {
+    "img_path": "images/host_pic_paris_43258\\10009357.jpg",
+    "host_id": "1",
+    "has_face": 1,
+    "nb_face": 1,
+    "face_area_ratio": 0.03342222222222222,
+    "avg_face_prob": 0.9991419315338135,
+    "bbox_list": [
+      [
+        86,
+        104,
+        122,
+        151
+      ]
+    ]
+  }
+]
