@@ -90,7 +90,7 @@ def download_image(id, url, out_dir='images_raw', timeout=10):
 
     # 防止覆盖已有文件
     if os.path.exists(out_path):
-        print(f"[INFO] host {id} pic 已存在，跳过： {out_path}")
+        # print(f"[INFO] host {id} pic EXISTS, SKIPPING: {out_path}")
         #CONTINUE只能在循环中使用
         return out_path
 
@@ -107,15 +107,28 @@ def download_image(id, url, out_dir='images_raw', timeout=10):
         return None
 
 
+def get_id_url_list(df):
+    for c in ["host_id",'host_picture_url']:
+        if c not in df.columns:
+            print(f"[warning!] {c} not in df!!!\n")
+            break
+        
+    id_url_list=[(row['host_id'], row["host_picture_url"]) for _, row in df.iterrows()]
+
+    return id_url_list
 
 # 批量并行下载函数
-def download_images_batch(id_url_list, out_dir='images_raw', max_workers=12):
+def download_images_batch(df, out_dir='images_raw', max_workers=12):
     """
     id_url_list: list of tuples [(host_id, url), ...]
     返回: dict {host_id: 保存路径 or None}
     """
     start_time=time.time()
     os.makedirs(out_dir, exist_ok=True)
+    
+    df_pic=df.copy()
+    print(f"len df:{len(df_pic)}!")
+    id_url_list=get_id_url_list(df_pic)
 
     results = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -143,6 +156,7 @@ def download_images_batch(id_url_list, out_dir='images_raw', max_workers=12):
     # report:
     print(f"success: {len([p for p in results.values() if p])} pics!")
     print(f"fails: {len([u for u, p in results.items() if not p])} pics!")#无效url/下载失败！
+    
 
     return results
 
