@@ -1,6 +1,9 @@
 ## rédaction
 paper/*
-B_images/*
+B_images/images/*
+B_images/results/*
+
+
 # draft
 sanboxJO/*
 
