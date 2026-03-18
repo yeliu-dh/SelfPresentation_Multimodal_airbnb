@@ -170,7 +170,6 @@ def download_images_batch(df, pic_url_col="host_picture_url",out_dir='images_raw
     # report:
     print(f"success: {len([p for p in results.values() if p])} pics!")
     print(f"fails: {len([u for u, p in results.items() if not p])} pics!")#无效url/下载失败！
-    
 
     return results
 
