@@ -113,12 +113,12 @@ def get_id_url_list(df):
             print(f"[warning!] {c} not in df!!!\n")
             break
         
-    id_url_list=[(row['host_id'], row["host_picture_url"]) for _, row in df.iterrows()]
+    id_url_list=[(str(int(row['host_id'])), row["host_picture_url"]) for _, row in df.iterrows()]
 
     return id_url_list
 
 # 批量并行下载函数
-def download_images_batch(df, out_dir='images_raw', max_workers=12):
+def download_images_batch(df, pic_url_col="host_picture_url",out_dir='images_raw', max_workers=12):
     """
     id_url_list: list of tuples [(host_id, url), ...]
     返回: dict {host_id: 保存路径 or None}
@@ -126,10 +126,24 @@ def download_images_batch(df, out_dir='images_raw', max_workers=12):
     start_time=time.time()
     os.makedirs(out_dir, exist_ok=True)
     
+    #
     df_pic=df.copy()
-    print(f"len df:{len(df_pic)}!")
+    df_pic=df_pic.dropna(subset=pic_url_col).drop_duplicates(subset=pic_url_col)
+    
+    print(f"[check] dropna + drop_duplicates on '{pic_url_col}':{len(df)} => {len(df_pic)}!")
     id_url_list=get_id_url_list(df_pic)
 
+    # ---check existant id!---
+    id_saved=[f.split('.')[0] for f in os.listdir(out_dir)]
+
+    # ids_to_save=[id_ for id_ in all_ids if id_ not in id_saved ]
+    print(f"[info] {len(id_saved)} pic already saved in {out_dir}")
+    id_url_list_to_save=[(k,v) for (k,v) in id_url_list if k not in id_saved]
+    print(f"[info] {len(id_url_list_to_save)} pic to save...\n")
+    
+    
+    
+    # ---save---
     results = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         """
@@ -138,7 +152,7 @@ def download_images_batch(df, out_dir='images_raw', max_workers=12):
         value = host_id
         这样我们在任务完成后，可以知道这个 Future 对应的是哪个 host_id，方便把结果写回字典。
         """       
-        futures = {executor.submit(download_image, id, url, out_dir): id for id, url in id_url_list}
+        futures = {executor.submit(download_image, id, url, out_dir): id for id, url in id_url_list_to_save}#***
         
         # for fut in as_completed(futures):
         for fut in tqdm(as_completed(futures), total=len(futures), desc="Downloading images..."):
