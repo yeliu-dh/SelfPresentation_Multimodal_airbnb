@@ -11,6 +11,157 @@ tqdm.pandas()  # 这行让 pandas 的 apply() 支持进度条
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
+##===========================================DOWNLOAD==============================================##
+# URL 校验
+def check_pic_url(url, timeout=3):
+    if not isinstance(url, str) or url.strip() == '':
+        return False
+    try:
+        response = requests.head(url, timeout=timeout, allow_redirects=True)
+        return response.status_code == 200
+    except RequestException:
+        return False
+
+# 单张图片下载函数
+def download_image(id, url, out_dir='images_raw', timeout=10):
+    if not check_pic_url(url, timeout=timeout):
+        print(f"[WARNING] 无效 URL: {url}")
+        return None
+
+    os.makedirs(out_dir, exist_ok=True)
+
+    filename= f"{str(id)}.jpg"
+    out_path = os.path.join(out_dir, filename)
+
+
+    # 防止覆盖已有文件
+    if os.path.exists(out_path):
+        # print(f"[INFO] host {id} pic EXISTS, SKIPPING: {out_path}")
+        #CONTINUE只能在循环中使用
+        return out_path
+
+    try:
+        response = requests.get(url, timeout=timeout, stream=True)
+        response.raise_for_status()
+        with open(out_path, 'wb') as f:
+            for chunk in response.iter_content(1024*8):
+                if chunk:
+                    f.write(chunk)
+        return out_path
+    except RequestException as e:
+        print(f"[ERROR] 下载失败: {url}, 错误: {e}")
+        return None
+
+
+def get_id_url_list(df):
+    """
+    host_id:先int再str
+    
+    
+    """
+    
+    for c in ["host_id",'host_picture_url']:
+        if c not in df.columns:
+            print(f"[warning!] {c} not in df!!!\n")
+            break
+        
+    id_url_list=[(str(int(row['host_id'])), row["host_picture_url"]) for _, row in df.iterrows()]
+
+    return id_url_list
+
+# 批量并行下载函数
+def download_images_batch(df, pic_url_col="host_picture_url",out_dir='images_raw', max_workers=12):
+    """
+    检查out_dir中已存在id，带下载id
+    
+    
+    
+    id_url_list: list of tuples [(host_id, url), ...]
+    返回: dict {host_id: 保存路径 or None}
+    """
+    # ---data---
+    start_time=time.time()
+    os.makedirs(out_dir, exist_ok=True)
+
+    df_pic=df.copy()
+    df_pic=df_pic.dropna(subset=pic_url_col).drop_duplicates(subset=pic_url_col)
+    
+    print(f"[check] dropna + drop_duplicates on '{pic_url_col}':{len(df)} => {len(df_pic)}!")
+    id_url_list=get_id_url_list(df_pic)
+
+
+    # ---check existant id!---
+    id_saved=[f.split('.')[0] for f in os.listdir(out_dir)]
+    print(f"[info] {len(id_saved)} pic already saved in {out_dir}")
+    id_url_list_to_save=[(k,v) for (k,v) in id_url_list if k not in id_saved]
+    print(f"[info] {len(id_url_list_to_save)} pic to save...\n")
+        
+    
+    # ---save---
+    results = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        """
+        字典 futures
+        key = Future 对象
+        value = host_id
+        这样我们在任务完成后，可以知道这个 Future 对应的是哪个 host_id，方便把结果写回字典。
+        """       
+        futures = {executor.submit(download_image, id, url, out_dir): id for id, url in id_url_list_to_save}#***
+        
+        # for fut in as_completed(futures):
+        for fut in tqdm(as_completed(futures), total=len(futures), desc="Downloading images..."):
+            host_id = futures[fut]
+            try:
+                path = fut.result()
+                results[host_id] = path #获取id对应的结果image_out_path
+            except Exception as e:
+                results[host_id] = None
+                # print(f"[ERROR] 下载出错: host_id={host_id}, 错误: {e}")
+    end_time=time.time()
+    print(f"\n[SUCCES] downloaded {len(id_url_list)} pics : {end_time-start_time:.2f} sec!\n")
+    #try1:[SUCCES] downloaded 2001 : 673.04 sec!
+
+    # report:
+    print(f"success: {len([p for p in results.values() if p])} pics!")
+    print(f"fails: {len([u for u, p in results.items() if not p])} pics!")#无效url/下载失败！
+
+    return results
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ##==================================== STRATIFIED SAMPLING=================================================##
 
 def stratified_sampling(df, groupby=["is_changed", "has_host_about", "lang"],N_total=2000):
@@ -64,114 +215,6 @@ def stratified_sampling(df, groupby=["is_changed", "has_host_about", "lang"],N_t
     return sampled_df, id_url_list
 
 
-
-##===========================================DOWNLOAD==============================================##
-# URL 校验
-def check_pic_url(url, timeout=3):
-    if not isinstance(url, str) or url.strip() == '':
-        return False
-    try:
-        response = requests.head(url, timeout=timeout, allow_redirects=True)
-        return response.status_code == 200
-    except RequestException:
-        return False
-
-# 单张图片下载函数
-def download_image(id, url, out_dir='images_raw', timeout=10):
-    if not check_pic_url(url, timeout=timeout):
-        print(f"[WARNING] 无效 URL: {url}")
-        return None
-
-    os.makedirs(out_dir, exist_ok=True)
-
-    filename= f"{str(id)}.jpg"
-    out_path = os.path.join(out_dir, filename)
-
-
-    # 防止覆盖已有文件
-    if os.path.exists(out_path):
-        # print(f"[INFO] host {id} pic EXISTS, SKIPPING: {out_path}")
-        #CONTINUE只能在循环中使用
-        return out_path
-
-    try:
-        response = requests.get(url, timeout=timeout, stream=True)
-        response.raise_for_status()
-        with open(out_path, 'wb') as f:
-            for chunk in response.iter_content(1024*8):
-                if chunk:
-                    f.write(chunk)
-        return out_path
-    except RequestException as e:
-        print(f"[ERROR] 下载失败: {url}, 错误: {e}")
-        return None
-
-
-def get_id_url_list(df):
-    for c in ["host_id",'host_picture_url']:
-        if c not in df.columns:
-            print(f"[warning!] {c} not in df!!!\n")
-            break
-        
-    id_url_list=[(str(int(row['host_id'])), row["host_picture_url"]) for _, row in df.iterrows()]
-
-    return id_url_list
-
-# 批量并行下载函数
-def download_images_batch(df, pic_url_col="host_picture_url",out_dir='images_raw', max_workers=12):
-    """
-    id_url_list: list of tuples [(host_id, url), ...]
-    返回: dict {host_id: 保存路径 or None}
-    """
-    start_time=time.time()
-    os.makedirs(out_dir, exist_ok=True)
-    
-    #
-    df_pic=df.copy()
-    df_pic=df_pic.dropna(subset=pic_url_col).drop_duplicates(subset=pic_url_col)
-    
-    print(f"[check] dropna + drop_duplicates on '{pic_url_col}':{len(df)} => {len(df_pic)}!")
-    id_url_list=get_id_url_list(df_pic)
-
-    # ---check existant id!---
-    id_saved=[f.split('.')[0] for f in os.listdir(out_dir)]
-
-    # ids_to_save=[id_ for id_ in all_ids if id_ not in id_saved ]
-    print(f"[info] {len(id_saved)} pic already saved in {out_dir}")
-    id_url_list_to_save=[(k,v) for (k,v) in id_url_list if k not in id_saved]
-    print(f"[info] {len(id_url_list_to_save)} pic to save...\n")
-    
-    
-    
-    # ---save---
-    results = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        """
-        字典 futures
-        key = Future 对象
-        value = host_id
-        这样我们在任务完成后，可以知道这个 Future 对应的是哪个 host_id，方便把结果写回字典。
-        """       
-        futures = {executor.submit(download_image, id, url, out_dir): id for id, url in id_url_list_to_save}#***
-        
-        # for fut in as_completed(futures):
-        for fut in tqdm(as_completed(futures), total=len(futures), desc="Downloading images..."):
-            host_id = futures[fut]
-            try:
-                path = fut.result()
-                results[host_id] = path #获取id对应的结果image_out_path
-            except Exception as e:
-                results[host_id] = None
-                # print(f"[ERROR] 下载出错: host_id={host_id}, 错误: {e}")
-    end_time=time.time()
-    print(f"\n[SUCCES] downloaded {len(id_url_list)} pics : {end_time-start_time:.2f} sec!\n")
-    #try1:[SUCCES] downloaded 2001 : 673.04 sec!
-
-    # report:
-    print(f"success: {len([p for p in results.values() if p])} pics!")
-    print(f"fails: {len([u for u, p in results.items() if not p])} pics!")#无效url/下载失败！
-
-    return results
 
 
 
