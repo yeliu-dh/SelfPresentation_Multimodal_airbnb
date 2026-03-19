@@ -30,12 +30,12 @@ def desc_catORnum(df, vars):
     for var in vars:
         if not var in df:
             print(f"[WARNING] {var} not in df!!!")
+            
         else :
             col = df[var]
             # nunique = col.nunique(dropna=False)
             # print(f"\n>>> {var} ({col.dtype}), unique={nunique}")
             
-                
             # ① 分类变量检测规则
             is_categorical = (
                 col.dtype == "object" or                 # 字符串
@@ -52,9 +52,12 @@ def desc_catORnum(df, vars):
                 print(col.value_counts(dropna=False).sort_values(ascending=False), "\n")
                 
             else:# 数值型，自动滤过了nan！！要手动打印在返回process处理！
-                print(f"- {var}: {print_nan_ratio(df, col=var)*100}% NaN !\n"
-                    f"- {var}: {print_zero_ratio(df, col=var)*100}% 0 !\n")
-                
+                if df[var].isna().any()==True:
+                    print(f"- {var}: {print_nan_ratio(df, col=var)*100}% NaN !\n"
+                        f"- {var}: {print_zero_ratio(df, col=var)*100}% 0 !\n")
+                else:
+                    print(f"no NaN in {var}:)")
+                    
                 print(col.describe(include="all"), "\n")
 
             print("-----------------------------------------------------------")
