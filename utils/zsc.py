@@ -47,7 +47,7 @@ def zsc_text(row, classifier, by_lang, dict_items):
             dict_scores = dict(zip(labels_en, res["scores"]))
 
             return  {
-                    "host_id": row["id"],
+                    "host_id": row["host_id"],
                     "host_about":text,
                     # "lang": lang,
                     **dict_scores
@@ -57,7 +57,7 @@ def zsc_text(row, classifier, by_lang, dict_items):
             # 报错则将所有labels en初始化为nan
             all_en_labels = dict_fr2en.values() if lang == "fr" else dict_items["en"]
             return {
-                "host_id": row["id"],
+                "host_id": row["host_id"],
                 "host_about":text,
                 # "lang": lang,
                 **{label: np.nan for label in all_en_labels}
@@ -86,7 +86,7 @@ def run_zsc(
     # ---input: df_unique--- 
     df=df_input.copy()
     df_unique=df.dropna(subset="host_about").drop_duplicates(subset="host_about")
-    print(f"[info] df: {len(df)}; df_unique on 'host_about': {len(df_unique)}\n")
+    print(f"[info] df: {len(df)}; df_unique : {len(df_unique)}\n")
     
     
     # ---dict_items---
@@ -116,20 +116,18 @@ def run_zsc(
     
     if os.path.exists(path_results):
         results_df=pd.read_csv(path_results)
-        processed=set(results_df['host_id'])
-        pending_df=df_unique[~df_unique['host_id'].isin(processed)]  
+        processed=set(results_df['host_about'])
+        pending_df=df_unique[~df_unique['host_about'].isin(processed)]  
+        
         print(f"[info] {len(processed)} rows already zsced; {len(pending_df)} rows to zsc!\n")
 
     else :
         pending_df=df_unique.copy()#input
-        results_df=pd.DataFrame()#output
-        print(f"0 rows zsc!")
-    
+        results_df=pd.DataFrame()#output  
     
     
     # ---model---
-    print(f"loading model...")
-    
+    print(f"loading model...\n")
     device=0 if torch.cuda.is_available() else -1
     classifier = pipeline(
         "zero-shot-classification",
@@ -141,7 +139,7 @@ def run_zsc(
     results= []
     start_time = time.time()
     if by_lang:
-        print(f"[info] zsc by lang !")
+        print(f"zsc by lang !")
 
     for idx, row in tqdm(pending_df.iterrows(), total=len(pending_df), desc="ZSC text..."):
         result=zsc_text(row, classifier, by_lang, dict_items)
@@ -155,55 +153,62 @@ def run_zsc(
             # results_df不断增加并保存，results储存每save_interval条结果
             print(f"[INTERVAL SAVE] {len(results_df)} / {len(df_unique)} rows zsced and saved!\n")            
     
-    ## 最后一次保存!!!
+    # ---final save---
     if results:
         results_df = pd.concat([results_df, pd.DataFrame(results)], ignore_index=True)
         results_df.to_csv(path_results, index=False)
-
         print(f"✅ [FINAL SAVE] {len(results_df)}/{len(df_unique)} rows saved to {path_results}!\n")
     
     end_time = time.time()
     print(f"\n[DONE] ZSC sur {len(df)} textes avec {len(dict_items['en'])} EN labels/{len(dict_items['fr'])} FR labels \n"
           f"par {model_name} prend {(end_time - start_time)/3600:.2f} hours !\n")
+
     
-    return results_df
-
-
-
-def merge_by_host_about(path_df_zsc, path_df_filtered, desired_items_order=None,
-            text_col="text", 
-            save=False, output_folder=None, filename=None):
+    # --merge--
+    cols_to_merge=['host_about']+labels_en
+    results_to_merge=results_df[cols_to_merge]    
+    df_zsc=df.merge(results_to_merge, left_on="host_about", right_on='host_about', how='left')
+    print(f"df_zsc: {df_zsc.shape};")
     
-    df_zsc=pd.read_csv(path_df_zsc)
-    # print(f"[INFO] df_zsc columns :{df_zsc.columns}")
     
-    # ONLY text_col+items
-    cols_to_merge=[c for c in df_zsc.columns if c not in ["id",'lang']]
-    df_zsc_to_merge=df_zsc.copy()[cols_to_merge]
-    if desired_items_order :
-        desired_order=[text_col]+desired_items_order
-        df_zsc_to_merge=df_zsc_to_merge[desired_order]
+    return df_zsc
 
-    df_filtered=pd.read_csv(path_df_filtered)
-    print(f"[INFO] df_zsc :{len(df_zsc)}; df_filtered: {len(df_filtered)}!")
-    print(f"[CHECK]cols to merge :{cols_to_merge}\n")
+
+
+# def merge_by_host_about(path_df_zsc, path_df_filtered, desired_items_order=None,
+#             text_col="text", 
+#             save=False, output_folder=None, filename=None):
     
-    print("merge items scores back to df_filtered".center(100,'-'))
-    df_items=df_filtered.merge(df_zsc_to_merge, left_on="host_about", right_on=text_col, how='left')
-    print(f"[INFO] len df items : {len(df_items)}\n"
-        f"no match rows stay NaN on items cols!!")
+#     df_zsc=pd.read_csv(path_df_zsc)
+#     # print(f"[INFO] df_zsc columns :{df_zsc.columns}")
+    
+#     # ONLY text_col+items
+#     cols_to_merge=[c for c in df_zsc.columns if c not in ["id",'lang']]
+#     df_zsc_to_merge=df_zsc.copy()[cols_to_merge]
+#     if desired_items_order :
+#         desired_order=[text_col]+desired_items_order
+#         df_zsc_to_merge=df_zsc_to_merge[desired_order]
 
-    if save:
-        os.makedirs(output_folder, exist_ok=True)
-        if filename==None:
-          filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items.csv")
+#     df_filtered=pd.read_csv(path_df_filtered)
+#     print(f"[INFO] df_zsc :{len(df_zsc)}; df_filtered: {len(df_filtered)}!")
+#     print(f"[CHECK]cols to merge :{cols_to_merge}\n")
+    
+#     print("merge items scores back to df_filtered".center(100,'-'))
+#     df_items=df_filtered.merge(df_zsc_to_merge, left_on="host_about", right_on=text_col, how='left')
+#     print(f"[INFO] len df items : {len(df_items)}\n"
+#         f"no match rows stay NaN on items cols!!")
+
+#     if save:
+#         os.makedirs(output_folder, exist_ok=True)
+#         if filename==None:
+#           filename=os.path.basename(path_df_filtered).replace("_filtered.csv", f"_items.csv")
         
-        outpath_df_items=os.path.join(output_folder,filename) 
-        df_items.to_csv(outpath_df_items, index=False)
+#         outpath_df_items=os.path.join(output_folder,filename) 
+#         df_items.to_csv(outpath_df_items, index=False)
         
-        print(f"✅[SAVE] df merged with items scores saved to {outpath_df_items}!\n"
-              f" ready for fa!")    
-    return df_items
+#         print(f"✅[SAVE] df merged with items scores saved to {outpath_df_items}!\n"
+#               f" ready for fa!")    
+#     return df_items
 
 # def merge_by_host_about(path_df_zsc, path_df_filtered, 
 #                         save=False, output_folder=None):
