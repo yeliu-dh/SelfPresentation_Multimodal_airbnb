@@ -29,7 +29,8 @@ def desc_catORnum(df, vars):
     
     for var in vars:
         if not var in df:
-            print(f"[WARNING] {var} not in df!!!")
+            print(f"[WARNING] {var} not in df!!!\n")
+            print("-----------------------------------------------------------")           
             
         else :
             col = df[var]
@@ -52,7 +53,8 @@ def desc_catORnum(df, vars):
                 print(col.value_counts(dropna=False).sort_values(ascending=False), "\n")
                 
             else:# 数值型，自动滤过了nan！！要手动打印在返回process处理！
-                if df[var].isna().any()==True:
+                if print_nan_ratio(df, col=var)!=0:
+                    # df[var].isna().any()==True:
                     print(f"- {var}: {print_nan_ratio(df, col=var)*100}% NaN !\n"
                         f"- {var}: {print_zero_ratio(df, col=var)*100}% 0 !\n")
                 else:
@@ -110,12 +112,14 @@ def detect_language_langid(text):
 
 
 
-def preprocess_host_variables(df_raw):
+def preprocess_host_variables(df_raw, 
+                            save=False, output_folder="data_processed", 
+                            filename=f"listings_processed.csv"):
     start_time=time.time()
    
     df=df_raw.copy()
     
-    var_ok=["host_picture_url","host_name","number_of_reviews"]
+
     var_toprocess=["host_has_profile_pic", "host_identity_verified","host_is_superhost","review_scores_rating", "host_since","host_about",
                 "host_response_time","host_response_rate","calculated_host_listings_count"]
     print(f"\n\n******************************HOST VARS******************************\n"
@@ -228,17 +232,24 @@ def preprocess_host_variables(df_raw):
                 print(f"[INFO] {var} hasn't specific traitement!")
     
     # 手动整理添加新增cols
-    var_processed=["host_is_superhost",
-                "review_scores_rating","has_rating", 
-                "host_since","years_since_host",
-                "host_about", "lang","len", #"has_host_about"
-                "host_response_time",
-                "host_response_rate","has_response_rate",
-                "calculated_host_listings_count", "professional_host"]
+    var_processed=[
+        "host_identity_verified",
+        "host_has_profile_pic",
+        "host_is_superhost",
+        "review_scores_rating","has_rating", 
+        "host_since","years_since_host",
+        "host_about", "lang","len", #"has_host_about"包括在len中！
+        "host_response_time",
+        "host_response_rate","has_response_rate",
+        "calculated_host_listings_count", "professional_host"
+        ]
     
 
     print(f"==========================HOST VARS================================")
-    impo_vars=["host_picture_url","host_identity_verified","number_of_reviews"]+var_processed
+    vars_ok=["host_picture_url","number_of_reviews","number_of_reviews_nextQ"]
+    # 若先filter，number_of_reviews会被重命名为number_of_reviews_nextQ
+    #"host_name",
+    impo_vars=vars_ok + var_processed
     print(f"{len(impo_vars)} IMPO VARS:{impo_vars}\n") 
 
 
@@ -248,10 +259,18 @@ def preprocess_host_variables(df_raw):
 
     # delect intermidate cols:optionnal
     # intermediate_cols=[]
+    
     df=df.drop(columns=['days_since_host'])#?
     print(f"Intermediate cols deleted: days_since_host")
     end_time=time.time()
     print(f"\n✅[SUCCES] Process host variables : {end_time-start_time:.2f} sec!\n")
+    
+    if save ==True:
+        os.makedirs(output_folder, exist_ok=True)
+        outpath_df_filtered=os.path.join(output_folder, filename)
+        df.to_csv(outpath_df_filtered, index=False)
+        print(f"\n✅[SAVE] {len(df)} lines df_filtered saved to '{outpath_df_filtered}'!")
+    
     
     return df
 
@@ -295,8 +314,11 @@ def filter_df(df, vars,
         len_after=len(df_filtered)
         print(f"[INFO]{len_before-len_after} nan dropped in {var}")
 
-    print(f"\nlen BEFORE filtrage by {'; '.join(vars)}: {len(df)}\n"
-        f"len AFTER: {len(df_filtered)}\n")
+    print(
+        f"\nfilter by: {'; '.join(vars)}\n"
+        f"len BEFORE: {len(df)}\n"
+        f"len AFTER: {len(df_filtered)}\n"
+        )
    
     return df_filtered
 
@@ -339,6 +361,11 @@ def add_booking_rate_l30d(df):
     
   
 def add_booking_rate_l90d(df, df_nextQ):
+    """
+    
+    
+    """
+    
     # no match / neg value stay nan in number_of_reviewsQ3
     
     # 本季度为止累计评论数：number_of_reviews_till_Q
@@ -466,7 +493,7 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
                         get_booking_rate_l90d=True, filtrate_by_booking_rate_l90d=True,
                         obj_vars=["room_type", 'property_type',"minimum_nights","instant_bookable"], 
                         threshold_km:int=None, 
-                        output_folder="mod_results", filename="listings_filtered.csv"):
+                        save=False, output_folder="data_processed", filename="listings_filtered.csv"):
     
     # obj_vars=["room_type", "minimum_nights","instant_bookable"]#all ok,无缺失/异常
     # proxy_vars=['price',"availability_90"]
@@ -507,7 +534,7 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
     
     
     vars_to_dropna=[]    
-     
+    
     print("# ---------------------------proxy---------------------------")
     
     df, proxy_vars=check_proxy_vars(df, proxy_vars=proxy_vars)
@@ -525,7 +552,6 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
             print(f"[CHECK] get booking_rate_l90d!")
             df=add_booking_rate_l90d(df, df_nextQ)
         vars_to_dropna.extend(["number_of_reviews_nextQ","availability_90","booking_rate_l90d"])
-    
 
     print("#------------------------ obj vars ---------------------------")
     if "instant_bookable" in obj_vars:
@@ -537,7 +563,8 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
 
     if "room_type" in obj_vars:
         """
-        room_type
+        
+        4 room_type
         Entire home/apt    32396
         Private room        3819
         Hotel room           530
@@ -570,11 +597,11 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
     desc_catORnum(df=df_filtered, vars=vars_to_dropna) 
 
 
-
-    os.makedirs(output_folder, exist_ok=True)
-    outpath_df_filtered=os.path.join(output_folder, filename)
-    df_filtered.to_csv(outpath_df_filtered, index=False)
-    print(f"\n✅[SAVE] {len(df_filtered)} lines df_filtered saved to '{outpath_df_filtered}'!")
+    if save ==True:
+        os.makedirs(output_folder, exist_ok=True)
+        outpath_df_filtered=os.path.join(output_folder, filename)
+        df_filtered.to_csv(outpath_df_filtered, index=False)
+        print(f"\n✅[SAVE] {len(df_filtered)} lines df_filtered saved to '{outpath_df_filtered}'!")
     
     return df_filtered
 
@@ -612,52 +639,6 @@ def keep_cols(df, cols_to_keep,
 
 
 
-
-
-
-
-
-
-
-# ========================================process main=======================================
-
-
-"""
-df_processed=preprocess_host_variables(df)
-df_filtered=preprocess_obj_vars(df=df_processed, 
-                    proxy_vars=['price',"availability_30","availability_90"], 
-                    get_boooking_rate_l30d=False, filtrate_by_booking_rate=False,#无输入时默认不按照booking筛选 
-                    obj_vars=["room_type","instant_bookable"],#"minimum_nights"关系不大？ 
-                    threshold_km=1, 
-                    output_folder=OUPUT_FOLDER_PROCESSED, filename=f"listings_paris{ym}_filtered.csv")
-# optional : 
-df_simple=keep_cols(df=df_filtered, cols_to_keep=COLS_TO_KEEP, 
-        save=True, output_folder=OUPUT_FOLDER_PROCESSED, filename=f"listings_paris{ym}_simple.csv")
-        
-    
-"""
-
-
-
-# def get_df_unique(df, dropby:str, 
-#                 save, output_folder, filename):
-#     df_unique=df.copy()
-#     df_unique=df_unique.dropna(subset=dropby).drop_duplicates(subset=dropby)
-
-#     print(f"[INFO] df BEFORE dropna + drop duplicates: {len(df)};\n"
-#       f"AFTER : {len(df_unique)}")
-
-#     if save :
-#         os.makedirs(output_folder, exist_ok=True)
-#         if not filename:
-#             filename='listings_unique.csv'
-
-#         outpath_df_unique=os.path.join(output_folder, filename)
-#         df_filtered.to_csv(outpath_df_filtered, index=False)
-#         print(f"\n✅[SAVE] {len(df_unique)} lines df_filtered saved to '{outpath_df_unique}'!")
-    
-
-#     return df_unique
 
 
 

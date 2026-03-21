@@ -36,7 +36,6 @@ def unzip_csv_gz(folder='raw_data', output_folder='data'):
 
 
 
-
 ##==================================SPLIT============================================##
 
 def split_change_stable(path_Q1, path_Q2, year:int,threshold_text_sim=0.85, 

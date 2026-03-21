@@ -23,13 +23,14 @@ labels = ["politics", "cooking", "sports"]
 results = classifier_bge(sequences, candidate_labels=labels, multi_label=True)
 
 
-
 """
+
+
 
 def run_zsc(
     path_df_unique,
     dict_items=None,
-    model_name="tasksource/ModernBERT-large-nli",#par défaut
+    model_name="MoritzLaurer/bge-m3-zeroshot-v2.0",#"MoritzLaurer/bge-m3-zeroshot-v2.0", #"tasksource/ModernBERT-large-nli",#par défaut
     by_lang=True,
     outpath_zsc_result=None, 
     save_interval=1000,# save every 
