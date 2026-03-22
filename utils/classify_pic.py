@@ -14,12 +14,6 @@ from transformers import CLIPModel, CLIPProcessor
 from PIL import Image
 
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from tqdm import tqdm
-from tqdm.contrib.concurrent import thread_map
-from collections import Counter
-from deepface import DeepFace
-
 #==================================================FACE===================================================
 # # 初始化一次即可（不要在循环里初始化）
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -27,7 +21,6 @@ clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 mtcnn = MTCNN(keep_all=True, device=device)
-
 
 
 def analyze_background_semantic(img_rgb, bbox_list):
@@ -91,149 +84,65 @@ def analyze_background_semantic(img_rgb, bbox_list):
     }
 
 
-def age_to_class(age):
-    if age == "unk" or age is None:
-        return "unk"
-    elif age < 30:
-        return "young"
-    elif age < 50:
-        return "middle"
-    else:
-        return "senior"
-
 
 
 def classify_pic_type(img_path):
-    
-    host_id = os.path.splitext(os.path.basename(img_path) )[0]
+    host_id = os.path.splitext(os.path.basename(img_path))[0]
     host_id=int(host_id)
-    
     img=cv2.imread(img_path)
     
-    # ---init---
-    if img is None:
-        print(f"[warning] no img!\n")
-        
-        return { 
-            # face:
-            "img_path": img_path, 
-            "host_id": host_id, 
-            "has_face": 0, 
-            "nb_face": 0, 
-            "face_area_ratio": 0, 
-            "avg_face_prob": 0,
-            "bbox_list": [], 
-            "clean_score":0,
-            "lifestyle_score":0,
-            "host_picture_type": "no_person",
-            
-            # deepface
-            "age": None,
-            "age_class": None,
-            "gender": None,
-            "smile_score": 0,
-            "is_smiling": 0,
-            "dominant_emotion": None           
-            }
-    
-    img_rgb=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    h, w, _=img_rgb.shape
-    img_area=h * w
-    
-    
-    
-    # ---face--- 
-    boxes, probs = mtcnn.detect(img_rgb, landmarks=False) 
-    
-    # 初始化：若[没有]检测到人脸:
+    # --init--
+    # face：
     has_face, nb_face, face_area_ratio, avg_face_prob = 0, 0, 0, 0
     bbox_list=[]
     clean_score, lifestyle_score, host_picture_type=0, 0, "no_person" 
-    
-    # 若检测到人脸:
-    if boxes is not None and len(boxes) > 0: # nb_face!=0 
-        has_face = 1 
-        nb_face = len(boxes) 
-        total_face_area = 0 
-        valid_probs = [] 
-        
-        for box, prob in zip(boxes, probs): 
-            if prob is None: 
-                continue
-            x1, y1, x2, y2 = box.astype(int) # 防止越界 
-            x1 = max(0, x1) 
-            y1 = max(0, y1) 
-            x2 = min(w, x2) 
-            y2 = min(h, y2)
-            area = (x2 - x1) * (y2 - y1) 
-            total_face_area += area
-            
-            bbox_list.append([int(x1), int(y1), int(x2), int(y2)]) 
-            valid_probs.append(prob) 
-            face_area_ratio = total_face_area / img_area 
-            avg_face_prob = sum(valid_probs) / len(valid_probs) if valid_probs else 0
-        
-        if nb_face>1:
-            host_picture_type='life_style'
-        
-        else :# nb_face==1
-            bg_semantic = analyze_background_semantic(img_rgb, bbox_list)
-            clean_score=bg_semantic['clean_score']
-            lifestyle_score=bg_semantic['lifestyle_score']
-            host_picture_type="pro_style" if clean_score > lifestyle_score else "life_style"
-    
-    
-    
-    
-    # ---deepface---
+    # deepface:
     age, age_class, gender, dominant_emotion=None,None,None,None
     smile_score, is_smiling=0,0
-    if has_face:# 没有不等于无法判断
-        try :
-            analysis = DeepFace.analyze(
-            img_path=img_path,
-            actions=['age','gender','emotion'],
-            enforce_detection=False,
-            detector_backend="opencv",
-            )
+    
 
-            # DeepFace 可能返回单个 dict 或列表
-            if isinstance(analysis, dict):
-                analysis = [analysis]
-
-            ages, smiles, emotions, genders = [], [], [], []
-
-            for face_analysis in analysis:
-                ages.append(face_analysis.get("age", 0))
-                smiles.append(face_analysis.get("emotion", {}).get("happy", 0))
-                emotions.append(face_analysis.get("dominant_emotion", "neutral"))
-                genders.append(face_analysis.get("dominant_gender", "unk"))
-
-            # 取平均年龄
-            age= int(sum(ages)/len(ages))
-            age_class = age_to_class(age)
+    if not img is None:# 若为none，不更新
+        img_rgb=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        h, w, _=img_rgb.shape
+        img_area=h * w
+        
+        # ---face--- 
+        boxes, probs = mtcnn.detect(img_rgb, landmarks=False) 
+        
+        # 若检测到人脸, 覆盖初始化结果:
+        if boxes is not None and len(boxes) > 0: # nb_face!=0 
+            has_face = 1 
+            nb_face = len(boxes) 
+            total_face_area = 0 
+            valid_probs = [] 
             
-            # 平均微笑
-            smile_score = float(sum(smiles)/len(smiles))
-            is_smiling = 1 if smile_score > 40 else 0
-
-            # 性别投票
-            gender_counts = Counter(genders)
-            if len(gender_counts) == 1:
-                gender = genders[0]
-            else:
-                gender = "multi"
-
-            # 主要情绪
-            emotion_counts = Counter(emotions)
-            dominant_emotion = emotion_counts.most_common(1)[0][0]
+            for box, prob in zip(boxes, probs): 
+                if prob is None: 
+                    continue
+                x1, y1, x2, y2 = box.astype(int) # 防止越界 
+                x1 = max(0, x1) 
+                y1 = max(0, y1) 
+                x2 = min(w, x2) 
+                y2 = min(h, y2)
+                area = (x2 - x1) * (y2 - y1) 
+                total_face_area += area
                 
-        except Exception as e :
-            print(f"[error] from 'deepface': {e}!\n")
-
-
+                bbox_list.append([int(x1), int(y1), int(x2), int(y2)]) 
+                valid_probs.append(prob) 
+                face_area_ratio = total_face_area / img_area 
+                avg_face_prob = sum(valid_probs) / len(valid_probs) if valid_probs else 0
             
-    return {
+            if nb_face>1:
+                host_picture_type='life_style'
+            
+            else :# nb_face==1
+                bg_semantic = analyze_background_semantic(img_rgb, bbox_list)
+                clean_score=bg_semantic['clean_score']
+                lifestyle_score=bg_semantic['lifestyle_score']
+                host_picture_type="pro_style" if clean_score > lifestyle_score else "life_style"
+        
+    # --- save ---
+    res = {
         "img_path": img_path,
         "host_id": host_id,
         "has_face": has_face,
@@ -244,7 +153,7 @@ def classify_pic_type(img_path):
         "clean_score":clean_score,
         "lifestyle_score": lifestyle_score,
         "host_picture_type":host_picture_type,
-        
+
         # deepface
         "age": age,
         "age_class": age_class,
@@ -254,26 +163,12 @@ def classify_pic_type(img_path):
         "dominant_emotion": dominant_emotion       
         }
     
+    return res
     
-    
-    
-    
-    
-    
-    
-    
-    
-# ========================================DEEPFACE===============================================
+  
 
 
-
-
-    
-    
-# ========================================RUN===============================================
-
-
-def run_clf(pic_folder, path_results,save_interval=1000):
+def run_clf(pic_folder, path_results,save_interval=1000, n_sample=10):
     # ---detector---
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     mtcnn = MTCNN(keep_all=True, device=device)
@@ -295,28 +190,31 @@ def run_clf(pic_folder, path_results,save_interval=1000):
         
 
     # ---n_sample---
-    pending_files=pending_files[:20]
-
-    # ---clf---
-
-    start_time=time.time()
-    for i, img_path in enumerate(tqdm(pending_files, total=len(pending_files), desc="processing images...")):
-        # ---save interval---
-        if (i+1) % save_interval==0:
-            with open(path_results, 'w', encoding="utf-8")as f:
-                json.dump(results, f, indent=2, ensure_ascii=False)
-                print(f"[interval save] {i+1} / {len(pending_files)} results saved!\n")
+    if n_sample:
+        pending_files=pending_files[:n_sample]
+        
+    if len(pending_files)>0:
+        
+        # ---clf---
+        start_time=time.time()
+        for i, img_path in enumerate(tqdm(pending_files, total=len(pending_files), desc="processing images...")):
+            # ---save interval---
+            if (i+1) % save_interval==0:
+                with open(path_results, 'w', encoding="utf-8")as f:
+                    json.dump(results, f, indent=2, ensure_ascii=False)
+                    print(f"[interval save] {i+1} / {len(pending_files)} results saved!\n")
+                    
+            results.append(classify_pic_type(img_path))
+        end_time=time.time()
                 
-        results.append(classify_pic_type(img_path))
-    end_time=time.time()
-               
-               
-    # ---final save---
-    with open(path_results, 'w', encoding="utf-8")as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-        print(f"[final save] results saved to {path_results}\n")
-    
-    print(f"[DONE] {len(results)} images classified : {end_time-start_time:.2f} sec!")
+        # ---final save---
+        with open(path_results, 'w', encoding="utf-8")as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+            print(f"[final save] results saved to {path_results}\n")
+        print(f"[DONE] {len(results)} images classified : {end_time-start_time:.2f} sec!")
 
+    else :
+        print(f"[info] all classified!")
+        
+    return results
 
-    return
