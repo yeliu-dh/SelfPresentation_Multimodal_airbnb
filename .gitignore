@@ -1,7 +1,8 @@
 ## rédaction
 paper/*
-B_images/images/*
-B_images/results/*
+B_images/images/london*
+B_images/images/paris*
+B_images/results_/*
 
 
 # draft

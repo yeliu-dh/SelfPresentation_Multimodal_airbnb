@@ -18,8 +18,12 @@ from mpl_toolkits.mplot3d import Axes3D
 ## my utils
 from utils.io import save_csv_as_latex
 
-def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
-        output_folder_data="../data_processed",# for df_scores(tactics)
+def run_fa(
+        # path_df_items, 
+        df_zsc, items, output_folder="../output_fa",#fallback!
+        output_folder_data="../data_processed",filename="listings_tactics.csv",
+        # for df_scores(tactics)
+        
         n_factors=5, rotation="oblimin", 
         fa_names=None,
         dict_factor_items=None,
@@ -34,26 +38,37 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
     # no suffix!
     # 英语提示，但是图片标题用法语！
     ## fa DROPNA!
+    # if path_df_items :
+    #     df=pd.read_csv(path_df_items)
+    #     print(f"[INFO] df_items : {len(df)} rows!\n")
     
-    df=pd.read_csv(path_df_items)
-    print(f"[INFO] df_items : {len(df)} rows!")
-    
+    df=df_zsc.copy()
+        
+    # if not df_zsc.empty:
+    #     df=df_zsc.copy()
+        # df=df.dropna(subset=items).drop_duplicates(subset=items)
+        # print(f"[info] df_zsc: {len(df_zsc)} rows; df_items:{len(df)} rows!\n")
+        
+        
     #output
     os.makedirs(output_folder, exist_ok=True)
     print(f"[INFO] all output saved to '{output_folder}'!\n"
           f"df with fa scores saved to '{output_folder_data}' !\n"
           f"[CHECK] INITIALISE DF, or MERGE fa scores will go WRONG!!!")
 
-    print(f"============================RUN FA=================================")
+    print(f"\n============================RUN FA=================================")
     #-------------------------- check data -----------------------------
     missing_labels = [col for col in items if col not in df.columns]
     if missing_labels:
         print(f"[WARNING] These items are missing in df: {missing_labels}\n")
 
-    else :
-        df_dropna=df[df[items].sum(axis=1)!=0]
+    else :        
+        df_dropna=df.dropna(subset=items).drop_duplicates(subset=items)
+        # df[df[items].sum(axis=1)!=0]
         data=df_dropna[items]
-        print(f"[INFO] len scores in df notna:{len(data)}\n")
+        print(f"[info] df_zsc: {len(df_zsc)} rows; df_items:{len(df_dropna)} rows!\n")
+
+        # print(f"[INFO] len scores in df notna:{len(data)}\n")
     
     # ---------------------------kmo-----------------------------------
     kmo_all, kmo_model = calculate_kmo(data)
@@ -313,25 +328,34 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
     df_tactics=pd.concat([df_dropna, df_scores], axis=1)# horizontal
     
     df_bio_tactics=df_tactics.drop_duplicates(subset="host_about")
+    
     cols_tosave=["host_about"]+df_scores.columns.tolist()
     df_bio_tactics=df_bio_tactics[cols_tosave]
+    
+    
     listings_tactics=df.merge(df_bio_tactics, left_on='host_about', right_on='host_about', how="left")
     
     #数据放在和OUTPUT_FOLDER同级文件夹: data_processed
+        
     os.makedirs(output_folder_data, exist_ok=True)
-    # filename=path_df_items.replace("_items", "_scores")
 
-    filename=os.path.basename(path_df_items).replace("_items", "_scores")
+    # filename=os.path.basename(path_df_items).replace("_items", "_scores")
+
     outpath_listings_tactics=os.path.join(output_folder_data,filename)
+    
     listings_tactics.to_csv(outpath_listings_tactics, index=False)
     display(listings_tactics.head())
     
     print(f"[INFO] scores shape (len(data), 1/2*n_factors) :{df_scores.shape}\n"
             f"len(df_dropna) should == len(df_scores)==len(df_tactics): {len(df_dropna)}, {len(df_scores)}, {len(df_tactics)}\n"
             f"len(DF)==len(listings_tactics):{len(df)},{len(listings_tactics)}\n")
-    print(f"✅ [SAVE] listings with tactics scores by '{get_factor_scores_by}'way saved to {outpath_listings_tactics}!!\n")
+    print(f"✅ [SAVE] {len(listings_tactics)} listings with tactics scores by '{get_factor_scores_by}' way saved to {outpath_listings_tactics}!!\n")
             
-        
+
+    # print("----------------------------merge tactics to df with nan and duplicates---------------------------------")
+    # listings_tactics
+
+
     
     print("###====================================CHECK=======================================###")   
 
@@ -439,4 +463,4 @@ def run_fa(path_df_items, items, output_folder="../output_fa",#fallback!
         print(f"✅ [SAVE] PCA 3D saved to {outpath_pca}!\n")
     
         
-    return 
+    return listings_tactics
