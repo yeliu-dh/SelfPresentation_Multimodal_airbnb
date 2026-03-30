@@ -21,7 +21,8 @@ def print_zero_ratio(df, col):
 
 
 def desc_catORnum(df, vars):
-
+    if isinstance(vars, str):
+        vars=[vars]
     print("\n================= BALN PROCESSED VARIABLES =====================\n"
         f"[INFO] statictic description on df ({len(df)} lines):\n"
         f"{' ; '.join(vars)}\n")
@@ -58,7 +59,8 @@ def desc_catORnum(df, vars):
                     print(f"- {var}: {print_nan_ratio(df, col=var)*100}% NaN !\n"
                         f"- {var}: {print_zero_ratio(df, col=var)*100}% 0 !\n")
                 else:
-                    print(f"no NaN in {var}:)")
+                    print(f"no NaN in {var}:)\n"
+                          f"{print_zero_ratio(df, col=var)*100}% 0\n")
                     
                 print(col.describe(include="all"), "\n")
 
@@ -739,6 +741,9 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
     result.loc['proportion', g1] = (df[group_col] == g1).mean()
     result.loc['proportion', g2] = (df[group_col] == g2).mean()
 
+    # for col in non_numeric_cols:
+    #   result.loc[col, g1]=(df[group_col] == g1)
+    
     # loop over numeric columns
     for col in numeric_cols:
         x1 = df.loc[df[group_col] == g1, col].dropna()
@@ -770,11 +775,8 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
         desired_order=['Superhôte','Autres','ttest_p','significance']
         result=result[desired_order]    
         
-    display(result)
+    # display(result)
          
-    # reorder:
-
-    
     if save :  
         if filename_noext==None:
             filename_csv= f'table_groupby_{group_col}.csv'
@@ -801,68 +803,195 @@ def group_mean_table_ttest(df, cols_to_check, group_col='host_is_superhost',
 
 
 
-def plot_distribution(df, group_col=None, y_var='booking_rate_l30d', 
-                    save=False, output_folder="mod_results",filename=None):
+# def plot_distribution(df, group_col=None, y_var='booking_rate_l30d', 
+#                     save=False, output_folder="mod_results",filename=None):
+#     import matplotlib.pyplot as plt
+#     import seaborn as sns
+
+#     # 单独使用时需要检查
+#     os.makedirs(output_folder, exist_ok=True)     
+#     # to numeric
+#     df[y_var] = pd.to_numeric(df[y_var], errors='coerce')
+    
+#     plt.figure(figsize=(10,6))
+#     # colors = ['#1f77b4', '#ff7f0e']  # 蓝色/橙色
+#     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+
+#     title= f"Distribution de {y_var}" 
+#     if y_var=="booking_rate_l30d":
+#         title=f"Distribution de Taux de réservation" # no touch to y_var!
+
+#     if group_col:
+#         groups = df[group_col].unique()
+#         print(f'[INFO] groups of {group_col}:{groups}')
+        
+#         group_title=f" ({group_col} {groups[0]} vs {groups[1]})" #开头空一格
+#         if group_col=='host_is_superhost':
+#             group_title= " (Superhôtes vs Autres)"
+#         title+=group_title
+
+
+#         for i, val in enumerate(groups):
+#             group_data = df[df[group_col]==val][y_var].dropna()
+#             label=val
+#             if group_col=="host_is_superhost":
+#                 label = "Superhôtes" if val=="t" else "Autres"
+            
+#             # 画 KDE 曲线
+#             sns.kdeplot(group_data, fill=True, alpha=0.3, label=label, color=colors[i])
+#             sns.kdeplot(group_data, color=colors[i], lw=2)  
+    
+    
+#     else :     
+#         group_data=df[y_var].dropna()       
+#         sns.kdeplot(group_data, fill=True, alpha=0.3, color=colors[0])
+#         sns.kdeplot(group_data, color=colors[0], lw=2)  # 描边
+      
+#     plt.xlabel(f"{y_var}")
+#     plt.ylabel("Densité")
+#     plt.title(title)
+#     plt.legend()
+    
+#     if save: 
+#         if filename==None:
+#             filename=f"host_performance_on_{y_var}.jpg"
+#         outpath_kde=os.path.join(output_folder,filename)
+#         plt.savefig(outpath_kde, dpi=300)
+#         print(f"✅ [SAVE] plot distribution saved to {outpath_kde}!")
+    
+#     plt.show()
+        
+#     return  
+
+def plot_distribution(
+    df, 
+    group_cols=None, 
+    y_var='booking_rate_l30d',
+    save=False, 
+    output_folder="mod_results",
+    filename=None
+):
+    import os
+    import math
+    import pandas as pd
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    # 单独使用时需要检查
-    os.makedirs(output_folder, exist_ok=True)     
-    # to numeric
+    os.makedirs(output_folder, exist_ok=True)
+    df = df.copy()
     df[y_var] = pd.to_numeric(df[y_var], errors='coerce')
-    
-    plt.figure(figsize=(10,6))
-    colors = ['#1f77b4', '#ff7f0e']  # 蓝色/橙色
-    
 
-    title= f"Distribution de {y_var}" 
-    if y_var=="booking_rate_l30d":
-        title=f"Distribution de Taux de réservation" # no touch to y_var!
+    # 标题
+    title = f"Distribution de {y_var}"
+    if y_var == "booking_rate_l30d":
+        title = "Distribution de Taux de réservation"
 
-    if group_col:
-        groups = df[group_col].unique()
-        print(f'[INFO] groups of {group_col}:{groups}')
+    palette = sns.color_palette("tab10")
+
+    # ======================
+    # 👉 多列分组 → 子图模式
+    # ======================
+    if isinstance(group_cols, list):
+
+        group_key = "_group_tmp"
+        df[group_key] = df[group_cols].astype(str).agg("_".join, axis=1)
+
+        groups = df[group_key].dropna().unique()
+        n_groups = len(groups)
+
+        print(f"[INFO] groups: {groups}")
+
+        # 👉 每行4个
+        ncols = 4
+        nrows = math.ceil(n_groups / ncols)
+
+        fig, axes = plt.subplots(nrows, ncols, figsize=(4*ncols, 4*nrows),sharey=True)#共享y轴
         
-        group_title=f" ({group_col} {groups[0]} vs {groups[1]})" #开头空一格
-        if group_col=='host_is_superhost':
-            group_title= " (Superhôtes vs Autres)"
-        title+=group_title
-
+        axes = axes.flatten()
 
         for i, val in enumerate(groups):
-            group_data = df[df[group_col]==val][y_var].dropna()
-            label=val
-            if group_col=="host_is_superhost":
-                label = "Superhôtes" if val=="t" else "Autres"
-            
-            # 画 KDE 曲线
-            sns.kdeplot(group_data, fill=True, alpha=0.3, label=label, color=colors[i])
-            sns.kdeplot(group_data, color=colors[i], lw=2)  
-    
-    
-    else :     
-        group_data=df[y_var].dropna()       
-        sns.kdeplot(group_data, fill=True, alpha=0.3, color=colors[0])
-        sns.kdeplot(group_data, color=colors[0], lw=2)  # 描边
-      
-    plt.xlabel(f"{y_var}")
-    plt.ylabel("Densité")
-    plt.title(title)
-    plt.legend()
-    
-    if save: 
-        if filename==None:
-            filename=f"host_performance_on_{y_var}.jpg"
-        outpath_kde=os.path.join(output_folder,filename)
-        plt.savefig(outpath_kde, dpi=300)
-        print(f"✅ [SAVE] plot distribution saved to {outpath_kde}!")
-    
+            ax = axes[i]
+
+            group_data = df[df[group_key] == val][y_var].dropna()
+            if len(group_data) == 0:
+                continue
+
+            # label格式
+            parts = val.split("_")
+            label = ", ".join([
+                f"{col}={v}" for col, v in zip(group_cols, parts)
+            ])
+
+            color = palette[i % len(palette)]
+            sns.kdeplot(group_data, fill=True, alpha=0.3, ax=ax, color=color)
+            sns.kdeplot(group_data, lw=2, ax=ax, color=color)
+
+            ax.set_title(label)
+            ax.set_xlabel(y_var)
+            ax.set_ylabel("Densité")
+
+        # 👉 删除多余子图
+        for j in range(i+1, len(axes)):
+            fig.delaxes(axes[j])
+
+        plt.suptitle(title, fontsize=16)
+        plt.tight_layout()
+
+    # ======================
+    # 👉 单列分组（保留原 overlay）
+    # ======================
+    elif isinstance(group_cols, str):
+
+        plt.figure(figsize=(10,6))
+
+        groups = df[group_cols].dropna().unique()
+        print(f"[INFO] groups: {groups}")
+
+        for i, val in enumerate(groups):
+            group_data = df[df[group_cols] == val][y_var].dropna()
+            if len(group_data) == 0:
+                continue
+
+            label = val
+            if group_cols == "host_is_superhost":
+                label = "Superhôtes" if val == "t" else "Autres"
+
+            color = palette[i % len(palette)]
+
+            sns.kdeplot(group_data, fill=True, alpha=0.3, label=label, color=color)
+            sns.kdeplot(group_data, lw=2, color=color)
+
+        plt.xlabel(y_var)
+        plt.ylabel("Densité")
+        plt.title(title)
+        plt.legend()
+
+    # ======================
+    # 👉 不分组
+    # ======================
+    else:
+        plt.figure(figsize=(10,6))
+
+        group_data = df[y_var].dropna()
+        sns.kdeplot(group_data, fill=True, alpha=0.3)
+        sns.kdeplot(group_data, lw=2)
+
+        plt.xlabel(y_var)
+        plt.ylabel("Densité")
+        plt.title(title)
+
+    # ======================
+    # 保存
+    # ======================
+    if save:
+        if filename is None:
+            filename = f"distribution_{y_var}.jpg"
+        outpath = os.path.join(output_folder, filename)
+        plt.savefig(outpath, dpi=300)
+        print(f"✅ [SAVE] plot saved to {outpath}")
+
     plt.show()
-        
-    return  
-
-
-
+    
 
 def plot_violon(df_input, vars, to_fillna0=False, save=False, 
                 output_folder=None, filename=None):

@@ -179,7 +179,7 @@ def run_fa(
                             float(df_fa_num.loc[item, factor]), ndigits
                         )
                         df_fa.loc[item]
-        # display(df_fa)
+        display(df_fa)
     
             
         #info
@@ -395,9 +395,11 @@ def run_fa(
         print(f"\n-----------------------------barplot comm&uniq-------------------------------")
         communalities = fa.get_communalities()
         uniqueness = fa.get_uniquenesses()
+        print(f"[info] good communality (h²) : > 0.3; specificity=1-communality")
         print(f"[INFO] mean COMM (> 0.6):{communalities.mean()}\n"
             f"[INFO] mean UNIQ : {uniqueness.mean()}\n")
         
+        print(f"[info] good item:gamma > 0.5 + sigma < 0.3")
         
         comm_df = pd.DataFrame({
             'Communality': communalities,
@@ -406,7 +408,7 @@ def run_fa(
         comm_df = comm_df.sort_values("Communality")
 
         plt.figure(figsize=(10,6))
-        colors = sns.color_palette("viridis", n_colors=2)  # 两个指标
+        colors = sns.color_palette("tab10", n_colors=2)  # "viridis", 两个指标
 
         comm_df.plot(kind='bar', stacked=False, color=colors)# edgecolor='black'
         plt.title("Communalités et spécificités des items", fontsize=16)

@@ -120,7 +120,7 @@ def check_vif (df, x_vars, y_var, key_vars, group_col):
                 "**" if x <= 10 else
                 "***"
     )
-    display(vif_df)  
+    # display(vif_df)  
     
     return
 
