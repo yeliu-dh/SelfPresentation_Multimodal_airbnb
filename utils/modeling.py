@@ -264,7 +264,6 @@ def get_group_effect(df, model, key_var, group_col):
             if interaction_term in param_names:
                 lin_comb[param_names.index(interaction_term)] = 1
                 is_base = False
-
         # t-test
         t_res = model.t_test(lin_comb)#检验该组效应的显著性
         results[g] = t_res
