@@ -887,12 +887,18 @@ def plot_distribution(
         title = "Distribution de Taux de réservation"
 
     palette = sns.color_palette("tab10")
+        
+    # palette = {
+    #     "london_2023": "#9ecae1",
+    #     "london_2024": "#2171b5",
+    #     "paris_2023": "#dadaeb",
+    #     "paris_2024": "#6a51a3"
+    # }
 
     # ======================
     # 👉 多列分组 → 子图模式
     # ======================
     if isinstance(group_cols, list):
-
         group_key = "_group_tmp"
         df[group_key] = df[group_cols].astype(str).agg("_".join, axis=1)
 
