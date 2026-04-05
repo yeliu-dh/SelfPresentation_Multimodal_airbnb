@@ -97,20 +97,6 @@ def is_valid_text(text):
 
 
 
-def detect_language_langid(text):
-    try:
-        if isinstance(text, str) and text.strip():
-            lang, _ = langid.classify(text)
-            if lang=="en" or lang=="fr":
-                return lang
-            else :
-                return "other_langs"
-        else:
-            return "no_text"  # 空值或非字符串
-        
-
-    except Exception:
-        return "unk"  # 检测失败的情况
 
 
 
@@ -131,7 +117,8 @@ def preprocess_host_variables(df_raw,
           f"- host_is_sueprhost: check ONLY 't'/'f'; fillna('f')\n"
           f"- review_scores_rating: {print_nan_ratio(df, col='review_scores_rating')*100}% NaN; fillna(mean), to numeric; ADD 'has_rating' \n"
           f"- host_since: ADD 'years_since_host' :float, 0.5-1 year=>1， 0-0.5 year => 0 \n"
-          f"- has_host_about: 'lang:en/fr/other_langs','len:int',\n"
+          f"- has_host_about: 'lang:en/fr/other_langs','has_text:1/0, 'lang_fr:1/0', 'lang_en:1/0', 'text_length:int'; \n"
+        #   f"- has_host_about: 'lang:en/fr/other_langs','len:int',\n"
         #   ADD 'has_host_about':1/0',
           f"- host_response_time:{print_nan_ratio(df, col='host_response_time')*100}% NaN, fillna('no_response_time') \n"
           f"- host_response_rate:{print_nan_ratio(df, col='host_response_rate')*100}% NaN, ADD 'has_response_rate' :1/0， fillna(0)\n"
@@ -200,12 +187,30 @@ def preprocess_host_variables(df_raw,
             
             
             elif var=='host_about':
+                def detect_language_langid(text):
+                    try:
+                        if isinstance(text, str) and text.strip():
+                            lang, _ = langid.classify(text)
+                            if lang=="en" or lang=="fr":
+                                return lang
+                            else :
+                                return "other_langs"
+                        else:
+                            return "no_text"  # 空值或非字符串
+                
+                    except Exception:
+                        return "unk"  # 检测失败的情况
+
+
                 # host_about：增加两列：has_host_about,lang,len
                 # df['has_host_about'] = df['host_about'].notna().astype(int)
                 df['lang'] = df['host_about'].apply(detect_language_langid)
-
+                df['has_text']=df['lang'].apply(lambda x : 0 if x=="no_text" else 1)
+                df['lang_fr']=df['lang'].apply(lambda x : 1 if x=="fr" else 0)
+                df['lang_en']=df['lang'].apply(lambda x : 1 if x=="en" else 0)
+                
                 # df['host_about'] = df['host_about'].fillna("nan")#无文本保留nan？
-                df['len']=df['host_about'].apply(lambda x : len(x.split()) if isinstance(x, str) else 0)
+                df['text_length']=df['host_about'].apply(lambda x : len(x.split()) if isinstance(x, str) else 0)
             
 
             elif var=='host_response_time':
@@ -240,7 +245,7 @@ def preprocess_host_variables(df_raw,
         "host_is_superhost",
         "review_scores_rating","has_rating", 
         "host_since","years_since_host",
-        "host_about", "lang","len", #"has_host_about"包括在len中！
+        "host_about", "lang","has_text","lang_fr","lang_en", "text_length", #"has_host_about"包括在len中！
         "host_response_time",
         "host_response_rate","has_response_rate",
         "calculated_host_listings_count", "professional_host"
@@ -365,9 +370,7 @@ def add_booking_rate_l30d(df):
 def add_booking_rate_l90d(df, df_nextQ):
     """
     
-    
     """
-    
     # no match / neg value stay nan in number_of_reviewsQ3
     
     # 本季度为止累计评论数：number_of_reviews_till_Q
@@ -386,8 +389,8 @@ def add_booking_rate_l90d(df, df_nextQ):
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_till_nextQ']-df_reviews["number_of_reviews_till_Q"]
     df_reviews['number_of_reviews_nextQ']=df_reviews['number_of_reviews_nextQ'].apply(lambda x : np.nan if x<0 else x)
         
-    print(f"[CHECK] no match on reviews_nextQ : {len(df_reviews[df_reviews['number_of_reviews_nextQ'].isna()])};\n"
-          f"NO ava90 this Q: {len(df_reviews[df_reviews['availability_90']==0])}")
+    print(f"[CHECK] no match on reviews_nextQ : {len(df_reviews[df_reviews['number_of_reviews_nextQ'].isna()])}, will drop;\n"
+          f"ava90==1 this Q: {len(df_reviews[df_reviews['availability_90']==0])}, will drop")
     
     #若nextQ为nan，则booking自动为nan
     # df_reviews['booking_rate_l90d'] = df_reviews.apply(
@@ -396,7 +399,7 @@ def add_booking_rate_l90d(df, df_nextQ):
     #             axis=1
     #         )
     
-    #向量化写法，速度更快：
+    #向量化写法，速度更快：nb不为nan，ava不为0！
     df_reviews['booking_rate_l90d'] = (
     df_reviews['number_of_reviews_nextQ'] / df_reviews['availability_90']
         ).clip(upper=1.0)
@@ -490,10 +493,11 @@ def categorize_property(ptype):
 ###======================================MAIN of=================================================###
 ##==================================PROXY +OBJ+LOCATION ======================================##
 
-def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","availability_90"], 
+def preprocess_obj_vars(df, df_nextQ, time=None,proxy_vars=['price',"availability_30","availability_90"], 
                         get_booking_rate_l30d=False, filtrate_by_booking_rate_l30d=False,#无输入时默认不按照booking筛选 
                         get_booking_rate_l90d=True, filtrate_by_booking_rate_l90d=True,
                         obj_vars=["room_type", 'property_type',"minimum_nights","instant_bookable"], 
+                      
                         threshold_km:int=None, 
                         save=False, output_folder="data_processed", filename="listings_filtered.csv"):
     
@@ -502,6 +506,7 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
     
     print(f"\n\n==========================PROXY + OBJ VARS============================\n"
         f"PROCESS PIPELINE :\n"
+            
         f"1) process proxies : \n"
         f"- price : delete '$', to_numeric\n\n"
         
@@ -532,7 +537,10 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
         f"location :'latitude','longitude': ADD 'is_within_Xkm'\n"
         f"calculate  distance bewtween listing and its cloest venue. if it's under {threshold_km} km, 'is_within_{threshold_km} km' ==1, else 0.\n\n"
         
-        f"7) cols to keep : only keeps cols needed!\n\n")
+        f"7) cols to keep : only keeps cols needed!\n\n"
+        
+        f"8) add colonne : 'time':YYMM\n\n"
+        )
     
     
     vars_to_dropna=[]    
@@ -598,7 +606,11 @@ def preprocess_obj_vars(df, df_nextQ, proxy_vars=['price',"availability_30","ava
     
     desc_catORnum(df=df_filtered, vars=vars_to_dropna) 
 
-
+    print('#-------------------------timestamp------------------------')
+    if time:
+        df_filtered['time']=time
+        print(f"{df_filtered.time.value_counts(dropna=False)}\n")
+        
     if save ==True:
         os.makedirs(output_folder, exist_ok=True)
         outpath_df_filtered=os.path.join(output_folder, filename)
