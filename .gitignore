@@ -7,11 +7,13 @@ B_images/results_/*
 
 # draft
 sanboxJO/*
+readings/*
+
 
 ## data+output
 data*/*
 # output*/*
-
+output_fa*
 
 # data
 
