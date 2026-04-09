@@ -1,5 +1,7 @@
 import os, sys, importlib, pathlib
-import pandas as pd
+import pandas as pd    
+import numpy as np
+
 from pathlib import Path
 sys.path.append (os.path.abspath(".."))
 
@@ -141,7 +143,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité'):
             sub["coef"] - sub["ci_low"],
             sub["ci_high"] - sub["coef"]
         ],
-        fmt='-o',       # 👈 线 + 点
+        fmt='-o',       # 线 + 点
         capsize=3,
     )
 
@@ -224,7 +226,7 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
         paris["y_hat"],
         marker="o",
         label="Observed (Paris)",
-            color='tab:orange'
+        color='tab:orange'
     )
     
     
@@ -256,11 +258,100 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
     ax.set_title(f"{var} {ddd_sig}")
     ax.set_ylabel("Niveau de tactique")
     ax.set_xlabel("Temps")
+    ax.tick_params(axis='x', rotation=30)
 
-    return
+    if not axes:
+        ax.legend()
+        
+    return 
 
 
 
+##======================================= predict curve===================================
+
+def plot_predict_curve(model, df, var):
+    # default control values
+    default_vals = {}
+    for col in model.model.exog_names:
+        if ':' in col or col == 'Intercept':
+            continue
+        var_name = col.split('[')[0].replace('C(', '').replace(')', '')
+        if var_name in df.columns:
+            if df[var_name].dtype == 'O' or df[var_name].nunique() < 10:
+                default_vals[var_name] = df[var_name].mode()[0]
+            else:
+                default_vals[var_name] = df[var_name].mean()
+    tactic_range = np.linspace(df[var].min(), df[var].max(), 100)
+    print(f"default_vals: {default_vals}")
+    
+    rows = []
+    for val in tactic_range:
+        row = default_vals.copy()
+        row[var] = val
+        rows.append(row)
+
+    pred_df = pd.DataFrame(rows)
+
+    # type alignment
+    for col in pred_df.columns:
+        if col in df.columns:
+            pred_df[col] = pred_df[col].astype(df[col].dtype)
+
+    preds = model.get_prediction(pred_df)
+    sf = preds.summary_frame(alpha=0.05)
+
+    pred_df["y"] = sf["mean"]
+    pred_df["low"] = sf["mean_ci_lower"]
+    pred_df["high"] = sf["mean_ci_upper"]
+
+    return pred_df
+
+
+
+
+## =================================real effet vars====================================
+import numpy as np
+from scipy import stats
+
+def linear_combo(model, terms):
+    coefs = model.params
+    cov = model.cov_params()
+    
+    # 系数向量
+    beta = coefs[terms].values
+    
+    # 权重（这里都是1）
+    w = np.ones(len(terms))
+    
+    # effect
+    effect = np.sum(beta)
+    
+    # variance
+    sub_cov = cov.loc[terms, terms].values
+    var = w @ sub_cov @ w
+    
+    se = np.sqrt(var)
+    
+    # t值
+    t = effect / se
+    
+    # p-value（双侧）
+    df = model.df_resid
+    pval = 2 * (1 - stats.t.cdf(abs(t), df))
+    
+    # 95% CI
+    crit = stats.t.ppf(0.975, df)
+    ci_low = effect - crit * se
+    ci_high = effect + crit * se
+    
+    return effect, se, pval, ci_low, ci_high
+
+
+
+ 
+
+# importlib.reload(modeling_did)
+# from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
 
 
 # importlib.reload(modeling_did)
