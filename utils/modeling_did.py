@@ -163,7 +163,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
         ],
         fmt='-o',       # 线 + 点
         capsize=3,
-        label="Paris", 
+        label="Différence Paris-Londres", 
         color=color_did
     )
     # + sig
@@ -173,12 +173,12 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
 
     ## 基准线london
     hline_v=0
-    ax.axhline(hline_v, linestyle="--", color="gray", linewidth=1, label='Londres')
+    ax.axhline(hline_v, linestyle="--", color="tab:blue", linewidth=1, label='Londres')
     
     # ---legend---
     # tick
     ax.set_xticks(x)
-    ax.set_xticklabels(sub['time'])
+    ax.set_xticklabels(sub['time'].unique())
     ax.tick_params(axis="x", rotation=30)
     
     # xylabel
@@ -186,8 +186,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     ax.set_ylabel('Différence')
 
     # title
-    if title is None:
-        title=var
+    title= var if title is None else title
     ax.set_title(title)
 
     if not axes:    
@@ -231,29 +230,38 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
         ax=axes[i]
 
     agg=agg_all[agg_all['variable']==var]
- 
-
+    # display(agg)
+    
+    x=list(range(len(agg['time'].unique())))
+    # print("axis x :", x)
+    
     ## plt
     paris = agg[agg["in_paris"] == 1]    
     # ---paris obs---
     ax.plot(
-        paris["time"],#.map(time_map),
+        x,
+        # paris["time"],#.map(time_map),        
         paris["y_hat"],
         marker="o",
         label="Observé (Paris)",
         color='tab:orange'
-    )
-    
+    )    
     
     # ---paris cf---
     ax.plot(
-        paris["time"],#.map(time_map),
+        x,
+        # paris["time"],#.map(time_map),
         paris["y_cf"],
         marker="o",
         linestyle="--",
         label="Contrefactuel(Paris)",
         color='tab:orange'
     )
+    # + sig
+    xi,yi, sig=2, paris[paris["time"]=="2406"]['y_cf'].iloc[0],ddd_sig
+    ax.text(xi+0.05, yi + 0.002, sig, ha='center', 
+        color='tab:orange', fontsize=12)
+    
     
     # ---london obs---
     control = agg[agg["in_paris"] == 0]
@@ -266,13 +274,15 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
         color='tab:blue'
     )
     
-    title=var if title==None else title
-    
-    ax.set_title(f"{title} {ddd_sig}")
-    ax.set_ylabel("Niveau moyen")
-    ax.set_xlabel("Temps")
+    ax.set_xticks(x)
+    ax.set_xticklabels(agg['time'].unique())
     ax.tick_params(axis='x', rotation=30)
 
+    ax.set_ylabel("Niveau moyen")
+    ax.set_xlabel("Temps")
+
+    title=var if title==None else title
+    ax.set_title(f"{title}")
     if not axes:
         ax.legend(fontsize=10)
         
@@ -604,7 +614,7 @@ def plot_one_did_interaction(df_plot, var='authenticité', axes=None, i=0, title
     
     # ---plot---
     x=list(range(len(sub['time'])))
-    print('axis x:', x)
+    # print('axis x:', x)
     
     ax.errorbar(
         x,
@@ -636,8 +646,8 @@ def plot_one_did_interaction(df_plot, var='authenticité', axes=None, i=0, title
     
     ax.set_xlabel("Temps")
     ax.set_ylabel("Différence Paris-Londres")
-    if title is None:
-        title=var
+        
+    title=var if title==None else title
     ax.set_title(f"{title}")
     if not axes:
         ax.legend()
