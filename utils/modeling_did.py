@@ -120,7 +120,7 @@ def get_ddd_effect_interaction(model, var):
     """
     if var :
         term=f"in_paris:C(time)[T.2406]:{var} - in_paris:C(time)[T.2312]:{var} = 0"
-    print(term)
+    # print(term)
     
     test=model.t_test(term)
     return pd.DataFrame({
@@ -230,7 +230,9 @@ def get_cf_data(df, model, var):
 
 
 
-def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
+
+
+def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title=None):
     if not axes:
         fig, ax=plt.subplots(figsize=(6,4))
     else :
@@ -272,8 +274,10 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
         color='tab:blue'
     )
     
-    ax.set_title(f"{var} {ddd_sig}")
-    ax.set_ylabel("Niveau de tactique")
+    title=var if title==None else title
+    
+    ax.set_title(f"{title} {ddd_sig}")
+    ax.set_ylabel("Niveau moyen")
     ax.set_xlabel("Temps")
     ax.tick_params(axis='x', rotation=30)
 
@@ -365,8 +369,79 @@ def linear_combo(model, terms):
 
 
 
+def get_real_cf_effect_data(model, tactics, ddd_df):
+    results = []
+    for var in tactics:
+        print(var)
+        specs = [
+            # london:
+            ("2306", 0, [var]),
+            ("2312", 0, [var, f"C(time)[T.2312]:{var}"]),
+            ("2406", 0, [var, f"C(time)[T.2406]:{var}"]),
+            
+            # paris:
+            ("2306", 1, [var, f"in_paris:{var}"]),
+            ("2312", 1, [
+                var,
+                f"C(time)[T.2312]:{var}",
+                f"in_paris:{var}",
+                f"in_paris:C(time)[T.2312]:{var}"
+            ]),
+            ("2406", 1, [
+                var,
+                f"C(time)[T.2406]:{var}",
+                f"in_paris:{var}",
+                f"in_paris:C(time)[T.2406]:{var}"
+            ])        
+        ]
+        
+        for time, paris, terms in specs:
+            effect, se, pval, ci_low, ci_high = linear_combo(model, terms)    
+            if time=="2406" and paris==1:
+                adjustment=ddd_df[ddd_df['variable']==var]['coef'].loc[0]
+                effect_cf=effect-adjustment
+                results.append({
+                "time": time,
+                "in_paris": paris,
+                "variable":var,
+                "effect_hat": effect,
+                "effect_cf": effect_cf,
+                "se": se,
+                "pval": pval,
+                "sig":p_to_sig(pval),
+                "ci_low": ci_low,
+                "ci_high": ci_high
+                })
+                
+            else :
+                results.append({
+                    "time": time,
+                    "in_paris": paris,
+                    "variable":var,
+                    "effect_hat": effect,
+                    "effect_cf": effect,
+                    "se": se,
+                    "pval": pval,
+                    "sig":p_to_sig(pval),
+                    "ci_low": ci_low,
+                    "ci_high": ci_high
+                })
+            
+    df_plot = pd.DataFrame(results)
+    # ## effet contrefactural ONLY IN 2406
+    # mask=(
+    #     (df_plot['time']=="2406")&
+    #     (df_plot['in_paris']==1)&
+    # )
+    
+    
+    order = ["2306", "2312", "2406"]
+    df_plot["time"] = pd.Categorical(df_plot["time"], categories=order, ordered=True)
 
+    return df_plot
 
+    
+    
 def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):   
     # check
     df=df_plot[df_plot['variable']==var].copy()
@@ -380,16 +455,20 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
     
 
     for i, (key, grp) in enumerate(df.groupby("in_paris")):
+        print(key)
+        # display(grp)
+
+        # print(key)# 0/1
         grp = grp.sort_values("time")
         x = list(range(len(grp)))   # 0,1,2
             
         ax.errorbar(
             # grp["time"],
             x, 
-            grp["effect"],
+            grp["effect_hat"],
             yerr=[
-                grp["effect"] - grp["ci_low"],
-                grp["ci_high"] - grp["effect"]
+                grp["effect_hat"] - grp["ci_low"],
+                grp["ci_high"] - grp["effect_hat"]
             ],
             marker='o',
             linestyle='-',
@@ -397,12 +476,13 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
             label=f"{'Paris' if key==1 else 'Londres'}"
         )
         try:
-            for xi, yi, sig in zip(x, grp["effect"], grp["sig"]):
+            for xi, yi, sig in zip(x, grp["effect_hat"], grp["sig"]):
                 ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
                         color=f"{'tab:orange' if key==1 else 'tab:blue'}", fontsize=12)
                 
         except Exception as e:
             print(e)    
+
         
     ax.axhline(0, color="lightgray", linestyle="--")  # 零效应线
     ax.set_xticks(x)
@@ -414,11 +494,110 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
         title=var
     ax.set_title(f"{title}")
     ax.tick_params(axis="x",rotation=30)
-    # ax.legend()
+    if not axes:
+        ax.legend()
     # ax.get_legend().remove()#存在时才能删除！
     
     # plt.show()
     return 
+
+
+
+    
+def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):   
+    # ---data---
+    df=df_plot[df_plot['variable']==var].copy()
+    if df_plot.empty:
+        print(f"[warning] filter to 0!")
+        
+    if axes is None:
+        fig, ax=plt.subplots(figsize=(6, 4))
+    else :
+        ax=axes[i]
+    
+    ## plot
+    x = list(range(df['time'].nunique()))   # 0,1,2
+    # print(f"axis x: {x}\n")
+    
+    
+    ## paris
+    paris=df[df['in_paris']==1]
+    color_paris='tab:orange'
+    
+    # ---paris obs---    
+    ax.errorbar(
+        x,
+        # paris["time"],#.map(time_map),
+        paris["effect_hat"],
+        yerr=[
+                paris["effect_hat"] - paris["ci_low"],
+                paris["ci_high"] - paris["effect_hat"]
+            ],
+        marker="o",
+        # alpha=0.6,
+
+        label="Observé (Paris)",
+        color=color_paris
+    )
+    for xi, yi, sig in zip(x, paris["effect_hat"], paris["sig"]):
+        ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
+        color=color_paris, fontsize=12)
+                    
+    # ---paris cf---
+    ax.errorbar(
+        x,
+        # paris["time"],#.map(time_map),
+        paris["effect_cf"],
+        marker="o",
+        linestyle="--",
+        label="Contrefactuel(Paris)",
+        color=color_paris
+    )
+    for xi, yi, sig in zip(x, paris["effect_cf"], paris["sig"]):
+        ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
+        color=color_paris, fontsize=12)
+    
+
+    # ---london obs---
+    
+    control = df[df["in_paris"] == 0]
+    color_london="tab:blue"
+    
+    ax.errorbar(
+        x,
+        # control["time"],#.map(time_map),
+        control["effect_hat"],
+        yerr=[
+                control["effect_hat"] - control["ci_low"],
+                control["ci_high"] - control["effect_hat"]
+            ],
+        marker="o",
+        alpha=0.6,
+        label="Observé (Londres)",
+        color=color_london
+    )
+    for xi, yi, sig in zip(x, control["effect_hat"], control["sig"]):
+            ax.text(xi+0.08, yi-0.001, sig, ha='center', 
+            color=color_london, fontsize=12)                         
+    
+        
+    ax.axhline(0, color="lightgray", linestyle="--")  # 零效应线
+    ax.set_xticks(x)# x
+    ax.set_xticklabels(df['time'].unique())
+    
+    ax.set_xlabel("Temps")
+    ax.set_ylabel(f"Effet de tactique")
+    if title is None:
+        title=var
+    ax.set_title(f"{title}")
+    ax.tick_params(axis="x",rotation=30)
+    if not axes:
+        ax.legend()
+    # ax.get_legend().remove()#存在时才能删除！
+    
+    # plt.show()
+    return 
+
 
 
 # importlib.reload(modeling_did)
