@@ -61,7 +61,7 @@ def get_event_study_data(model, var):
     data.columns = ["variable", "coef", "se", "pval"]
 
     # 只保留 in_paris × time
-    data = data[data["variable"].str.contains("in_paris:C\\(time\\)")]
+    data = data[data["variable"].str.contains("in_paris:C\\(time\\)")]    
     
     # 提取时间点
     data["time"] = data["variable"].str.extract(r"T\.(\d+)")
@@ -83,11 +83,7 @@ def get_event_study_data(model, var):
 
     data = pd.concat([baseline, data], ignore_index=True)
 
-    # 转 numeric
-    # data["time"] = pd.to_numeric(data["time"])
     data = data.sort_values("time")
-    # data['time']=data['time'].astype(str)
-    # display(df)
     data['variable']=var
     data['sig']=data['pval'].apply(p_to_sig)        
     data['label']=data['time']+' '+data['sig']        
@@ -144,9 +140,10 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     
     df=data.copy()
     sub = df[df["variable"] == var].copy()
-
-    # 确保排序
     sub = sub.sort_values("time")
+    x=list(range(len(sub['time'])))
+
+    color_did='tab:red'
 
     # baseline处理（2306 = 0）
     if (sub["time"] == '2306').any():
@@ -156,8 +153,9 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     
     # 置信区间errorbar
     ax.errorbar(
+        x,
         # sub['time'],
-        sub['label'],
+        # sub['label'],
         sub["coef"],
         yerr=[
             sub["coef"] - sub["ci_low"],
@@ -165,38 +163,35 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
         ],
         fmt='-o',       # 线 + 点
         capsize=3,
-        label="Paris"
+        label="Paris", 
+        color=color_did
     )
+    # + sig
+    for xi, yi, sig in zip(x, sub["coef"], sub["sig"]):
+        ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
+        color=color_did, fontsize=12)
 
     ## 基准线london
     hline_v=0
     ax.axhline(hline_v, linestyle="--", color="gray", linewidth=1, label='Londres')
-    # xmax=ax.get_xlim()[1]
-    # 在水平线右侧加文字
-    # ax.text(
-    #     x=xmax-0.05,#（放在最右边）x 位置（根据你的数据范围调整）
-    #     y=hline_v+0.001,            # 跟线同一个高度
-    #     s="Londres",
-    #     va='bottom',          # 垂直对齐
-    #     ha='right',           # 水平对齐
-    #     color="gray", 
-    #     fontsize=10
-    # )
+    
+    # ---legend---
+    # tick
+    ax.set_xticks(x)
+    ax.set_xticklabels(sub['time'])
+    ax.tick_params(axis="x", rotation=30)
+    
+    # xylabel
+    ax.set_xlabel("Temps")
+    ax.set_ylabel('Différence')
+
+    # title
     if title is None:
         title=var
     ax.set_title(title)
-    ax.set_xlabel("Temps")
-    ax.set_ylabel('Différence')
-    ax.tick_params(axis='x', rotation=30)
+
     if not axes:    
         ax.legend()
-    # else :
-    #     ax.get_legend().remove()
-        
-# importlib.reload(modeling_did)
-# from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
-# colors = sns.color_palette("tab20", 6)
-
 
 
 ### =======================COUNTERFACTUAL=========================
@@ -227,9 +222,6 @@ def get_cf_data(df, model, var):
     # agg=agg.sort_values([
     
     return agg 
-
-
-
 
 
 def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title=None):
@@ -326,6 +318,8 @@ def plot_predict_curve(model, df, var):
     pred_df["high"] = sf["mean_ci_upper"]
 
     return pred_df
+
+
 
 
 
@@ -428,11 +422,6 @@ def get_real_cf_effect_data(model, tactics, ddd_df):
                 })
             
     df_plot = pd.DataFrame(results)
-    # ## effet contrefactural ONLY IN 2406
-    # mask=(
-    #     (df_plot['time']=="2406")&
-    #     (df_plot['in_paris']==1)&
-    # )
     
     
     order = ["2306", "2312", "2406"]
@@ -470,7 +459,7 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
                 grp["effect_hat"] - grp["ci_low"],
                 grp["ci_high"] - grp["effect_hat"]
             ],
-            marker='o',
+            marker='s', # 方块
             linestyle='-',
             alpha=0.85,
             label=f"{'Paris' if key==1 else 'Londres'}"
@@ -533,7 +522,7 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
                 paris["effect_hat"] - paris["ci_low"],
                 paris["ci_high"] - paris["effect_hat"]
             ],
-        marker="o",
+        marker="s",
         # alpha=0.6,
 
         label="Observé (Paris)",
@@ -548,7 +537,7 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
         x,
         # paris["time"],#.map(time_map),
         paris["effect_cf"],
-        marker="o",
+        marker="s",
         linestyle="--",
         label="Contrefactuel(Paris)",
         color=color_paris
@@ -571,7 +560,7 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
                 control["effect_hat"] - control["ci_low"],
                 control["ci_high"] - control["effect_hat"]
             ],
-        marker="o",
+        marker="s",
         alpha=0.6,
         label="Observé (Londres)",
         color=color_london
@@ -599,6 +588,63 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
     return 
 
 
+
+def plot_one_did_interaction(df_plot, var='authenticité', axes=None, i=0, title=None):
+    if not axes:
+        fig, ax=plt.subplots(figsize=(6, 4))   
+    else :    
+        ax=axes[i]
+
+    # ---dat---
+    sub = df_plot[df_plot["variable"] == var].copy()
+    sub = sub.sort_values("time")   
+    # display(sub)
+    
+    color_did="tab:red"
+    
+    # ---plot---
+    x=list(range(len(sub['time'])))
+    print('axis x:', x)
+    
+    ax.errorbar(
+        x,
+        sub["effect"],
+        yerr=[
+            sub["effect"] - sub["ci_low"],
+            sub["ci_high"] - sub["effect"]
+        ],
+        fmt='-s',       # 线 + 点
+        capsize=3,
+        color=color_did,
+        label="Différence Paris-Londres"
+    )
+    # + sig
+    for xi, yi, sig in zip(x, sub["effect"], sub["sig"]):
+        ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
+        color=color_did, fontsize=12)
+    
+    ## ref
+    hline_v=sub[sub['time']=="2306"]['effect'].iloc[0]
+    ax.axhline(hline_v, linestyle="--", color="tab:blue", linewidth=1, label='Londres')
+    hline_0=0
+    ax.axhline(hline_0, linestyle="--", color="gray", linewidth=1)
+
+    # ---legend---
+    ax.set_xticks(x)
+    ax.set_xticklabels(sub['time'])
+    ax.tick_params(axis="x", rotation=30)
+    
+    ax.set_xlabel("Temps")
+    ax.set_ylabel("Différence Paris-Londres")
+    if title is None:
+        title=var
+    ax.set_title(f"{title}")
+    if not axes:
+        ax.legend()
+    
+    
+    
+    
 
 # importlib.reload(modeling_did)
 # from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
