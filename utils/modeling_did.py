@@ -114,8 +114,28 @@ def get_ddd_effect(model, var,
         })
     
     
+def get_ddd_effect_interaction(model, var):
+    """
+    in_paris:C(time)[T.2406] - in_paris:C(time)[T.2312]    
+    """
+    if var :
+        term=f"in_paris:C(time)[T.2406]:{var} - in_paris:C(time)[T.2312]:{var} = 0"
+    print(term)
+    
+    test=model.t_test(term)
+    return pd.DataFrame({
+            'variable':var,
+            "coef": test.effect[0],
+            "se": test.sd[0],
+            "pval": test.pvalue,
+            "sig":p_to_sig(test.pvalue),
+            "ci_low": test.conf_int()[0][0],
+            "ci_high": test.conf_int()[0][1]
+        })
+    
+    
 
-def plot_one_did(data, axes=None, i=0, var='authenticité'): 
+def plot_one_did(data, axes=None, i=0, var='authenticité', title=None): 
     if not axes:
         fig, ax=plt.subplots(figsize=(6, 4))   
     else :    
@@ -145,31 +165,34 @@ def plot_one_did(data, axes=None, i=0, var='authenticité'):
         ],
         fmt='-o',       # 线 + 点
         capsize=3,
+        label="Paris"
     )
 
     ## 基准线london
     hline_v=0
-    xmax=ax.get_xlim()[1]
-
-    ax.axhline(hline_v, linestyle="--", color="gray", linewidth=1)
+    ax.axhline(hline_v, linestyle="--", color="gray", linewidth=1, label='Londres')
+    # xmax=ax.get_xlim()[1]
     # 在水平线右侧加文字
-    ax.text(
-        x=xmax-0.05,#（放在最右边）x 位置（根据你的数据范围调整）
-        y=hline_v+0.001,            # 跟线同一个高度
-        s="london",
-        va='bottom',          # 垂直对齐
-        ha='right',           # 水平对齐
-        color="gray", 
-        fontsize=10
-    )
-
-    ax.set_title(var)
+    # ax.text(
+    #     x=xmax-0.05,#（放在最右边）x 位置（根据你的数据范围调整）
+    #     y=hline_v+0.001,            # 跟线同一个高度
+    #     s="Londres",
+    #     va='bottom',          # 垂直对齐
+    #     ha='right',           # 水平对齐
+    #     color="gray", 
+    #     fontsize=10
+    # )
+    if title is None:
+        title=var
+    ax.set_title(title)
     ax.set_xlabel("Temps")
     ax.set_ylabel('Différence')
     ax.tick_params(axis='x', rotation=30)
-       
-       
-    
+    if not axes:    
+        ax.legend()
+    # else :
+    #     ax.get_legend().remove()
+        
 # importlib.reload(modeling_did)
 # from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
 # colors = sns.color_palette("tab20", 6)
@@ -195,14 +218,16 @@ def get_cf_data(df, model, var):
     df.loc[
         (df["in_paris"]==1) & (df["time"]=="2406"),
         "y_cf"
-    ] -= adjustment
+    ] -= adjustment#==去掉2406交互项，再加一次2312交互项
+    
 
     # print(df[['y_hat','y_cf']].describe())
-    agg=df.groupby(['time','in_paris'])[['y_hat','y_cf']].mean().reset_index()
+    agg=df.groupby(['in_paris','time'])[['y_hat','y_cf']].mean().reset_index()
     agg['variable']=var
-    
+    # agg=agg.sort_values([
     
     return agg 
+
 
 
 def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
@@ -213,11 +238,7 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
 
     agg=agg_all[agg_all['variable']==var]
  
-    
-    # # categorical mapping
-    # times = sorted(agg["time"].unique())
-    # time_map = {t: i for i, t in enumerate(times)}
-    
+
     ## plt
     paris = agg[agg["in_paris"] == 1]    
     # ---paris obs---
@@ -225,7 +246,7 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
         paris["time"],#.map(time_map),
         paris["y_hat"],
         marker="o",
-        label="Observed (Paris)",
+        label="Observé (Paris)",
         color='tab:orange'
     )
     
@@ -236,7 +257,7 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
         paris["y_cf"],
         marker="o",
         linestyle="--",
-        label="Counterfactual  (Paris)",
+        label="Contrefactuel(Paris)",
         color='tab:orange'
     )
     
@@ -247,21 +268,17 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig=""):
         control["y_hat"],
         marker="o",
         # alpha=0.4,
-        label="Observed (London)",
+        label="Observé (Londres)",
         color='tab:blue'
     )
-
-    # event line
-    # ax.set_xticks(list(time_map.values()))
-    # ax.set_xticklabels(list(time_map.keys()))
-
+    
     ax.set_title(f"{var} {ddd_sig}")
     ax.set_ylabel("Niveau de tactique")
     ax.set_xlabel("Temps")
     ax.tick_params(axis='x', rotation=30)
 
     if not axes:
-        ax.legend()
+        ax.legend(fontsize=10)
         
     return 
 
@@ -348,7 +365,61 @@ def linear_combo(model, terms):
 
 
 
- 
+
+
+def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):   
+    # check
+    df=df_plot[df_plot['variable']==var].copy()
+    if df_plot.empty:
+        print(f"[warning] filter to 0!")
+        
+    if axes is None:
+        fig, ax=plt.subplots(figsize=(6, 4))
+    else :
+        ax=axes[i]
+    
+
+    for i, (key, grp) in enumerate(df.groupby("in_paris")):
+        grp = grp.sort_values("time")
+        x = list(range(len(grp)))   # 0,1,2
+            
+        ax.errorbar(
+            # grp["time"],
+            x, 
+            grp["effect"],
+            yerr=[
+                grp["effect"] - grp["ci_low"],
+                grp["ci_high"] - grp["effect"]
+            ],
+            marker='o',
+            linestyle='-',
+            alpha=0.85,
+            label=f"{'Paris' if key==1 else 'Londres'}"
+        )
+        try:
+            for xi, yi, sig in zip(x, grp["effect"], grp["sig"]):
+                ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
+                        color=f"{'tab:orange' if key==1 else 'tab:blue'}", fontsize=12)
+                
+        except Exception as e:
+            print(e)    
+        
+    ax.axhline(0, color="lightgray", linestyle="--")  # 零效应线
+    ax.set_xticks(x)
+    ax.set_xticklabels(grp['time'])
+    
+    ax.set_xlabel("Temps")
+    ax.set_ylabel(f"Effet de tactique")
+    if title is None:
+        title=var
+    ax.set_title(f"{title}")
+    ax.tick_params(axis="x",rotation=30)
+    # ax.legend()
+    # ax.get_legend().remove()#存在时才能删除！
+    
+    # plt.show()
+    return 
+
 
 # importlib.reload(modeling_did)
 # from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
