@@ -174,6 +174,9 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     ## 基准线london
     hline_v=0
     ax.axhline(hline_v, linestyle="--", color="tab:blue", linewidth=1, label='Londres')
+    ### post line看因果效应
+    # vline_v=x[2]
+    # ax.axvline(vline_v, linestyle="--", color="gray", linewidth=1, label='Post')
     
     # ---legend---
     # tick
@@ -187,7 +190,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
 
     # title
     title= var if title is None else title
-    ax.set_title(title)
+    ax.set_title(title, pad=12)
 
     if not axes:    
         ax.legend()
@@ -223,7 +226,7 @@ def get_cf_data(df, model, var):
     return agg 
 
 
-def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title=None):
+def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title=None, ylabel=None):
     if not axes:
         fig, ax=plt.subplots(figsize=(6,4))
     else :
@@ -233,7 +236,7 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
     # display(agg)
     
     x=list(range(len(agg['time'].unique())))
-    # print("axis x :", x)
+    print("axis x :", x)
     
     ## plt
     paris = agg[agg["in_paris"] == 1]    
@@ -277,12 +280,13 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
     ax.set_xticks(x)
     ax.set_xticklabels(agg['time'].unique())
     ax.tick_params(axis='x', rotation=30)
-
-    ax.set_ylabel("Niveau moyen")
+    
+    ylabel="Niveau moyen" if ylabel is None else ylabel
+    ax.set_ylabel(ylabel)
     ax.set_xlabel("Temps")
 
     title=var if title==None else title
-    ax.set_title(f"{title}")
+    ax.set_title(f"{title}", pad=12)
     if not axes:
         ax.legend(fontsize=10)
         
@@ -454,7 +458,7 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
     
 
     for i, (key, grp) in enumerate(df.groupby("in_paris")):
-        print(key)
+        # print(key)
         # display(grp)
 
         # print(key)# 0/1
@@ -634,10 +638,13 @@ def plot_one_did_interaction(df_plot, var='authenticité', axes=None, i=0, title
         color=color_did, fontsize=12)
     
     ## ref
-    hline_v=sub[sub['time']=="2306"]['effect'].iloc[0]
-    ax.axhline(hline_v, linestyle="--", color="tab:blue", linewidth=1, label='Londres')
+    # hline_v=sub[sub['time']=="2306"]['effect'].iloc[0]
+    # ax.axhline(hline_v, linestyle="--", color="tab:blue", linewidth=1, label='Londres')
+    # hline_0=0
+    # ax.axhline(hline_0, linestyle="--", color="gray", linewidth=1, label="référence: Juin 2023")
     hline_0=0
-    ax.axhline(hline_0, linestyle="--", color="gray", linewidth=1)
+    ax.axhline(hline_0, linestyle="--", color="gray", linewidth=1, label="référence:Londres")
+    
 
     # ---legend---
     ax.set_xticks(x)
@@ -648,18 +655,11 @@ def plot_one_did_interaction(df_plot, var='authenticité', axes=None, i=0, title
     ax.set_ylabel("Différence Paris-Londres")
         
     title=var if title==None else title
-    ax.set_title(f"{title}")
+    ax.set_title(f"{title}", pad=12)
+    
     if not axes:
         ax.legend()
     
     
     
     
-
-# importlib.reload(modeling_did)
-# from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
-
-
-# importlib.reload(modeling_did)
-# from utils.modeling_did import get_event_study_data, get_ddd_effect, run_tactic_model_by_time, plot_one
-
