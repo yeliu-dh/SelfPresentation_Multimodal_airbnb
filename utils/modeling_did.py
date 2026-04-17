@@ -182,7 +182,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     # tick
     ax.set_xticks(x)
     ax.set_xticklabels(sub['time'].unique())
-    ax.tick_params(axis="x", rotation=30)
+    ax.tick_params(axis="ddd", rotation=30)
     
     # xylabel
     ax.set_xlabel("Temps")
@@ -343,6 +343,12 @@ import numpy as np
 from scipy import stats
 
 def linear_combo(model, terms):
+    """
+    terms:
+    
+    
+    """
+    
     coefs = model.params
     cov = model.cov_params()
     
@@ -377,37 +383,43 @@ def linear_combo(model, terms):
 
 
 
-def get_real_cf_effect_data(model, tactics, ddd_df):
+def get_real_cf_effect_data(model, tactics, specs=None, ddd_df=None):
     results = []
     for var in tactics:
         print(var)
-        specs = [
-            # london:
-            ("2306", 0, [var]),
-            ("2312", 0, [var, f"C(time)[T.2312]:{var}"]),
-            ("2406", 0, [var, f"C(time)[T.2406]:{var}"]),
-            
-            # paris:
-            ("2306", 1, [var, f"in_paris:{var}"]),
-            ("2312", 1, [
-                var,
-                f"C(time)[T.2312]:{var}",
-                f"in_paris:{var}",
-                f"in_paris:C(time)[T.2312]:{var}"
-            ]),
-            ("2406", 1, [
-                var,
-                f"C(time)[T.2406]:{var}",
-                f"in_paris:{var}",
-                f"in_paris:C(time)[T.2406]:{var}"
-            ])        
-        ]
+        
+        if specs is None:
+            specs = [
+                # london:
+                ("2306", 0, [var]),
+                ("2312", 0, [var, f"C(time)[T.2312]:{var}"]),
+                ("2406", 0, [var, f"C(time)[T.2406]:{var}"]),
+                
+                # paris:
+                ("2306", 1, [var, f"in_paris:{var}"]),
+                ("2312", 1, [
+                    var,
+                    f"C(time)[T.2312]:{var}",
+                    f"in_paris:{var}",
+                    f"in_paris:C(time)[T.2312]:{var}"
+                ]),
+                ("2406", 1, [
+                    var,
+                    f"C(time)[T.2406]:{var}",
+                    f"in_paris:{var}",
+                    f"in_paris:C(time)[T.2406]:{var}"
+                ])        
+            ]
         
         for time, paris, terms in specs:
             effect, se, pval, ci_low, ci_high = linear_combo(model, terms)    
             if time=="2406" and paris==1:
-                adjustment=ddd_df[ddd_df['variable']==var]['coef'].loc[0]
-                effect_cf=effect-adjustment
+                if ddd_df is not None:
+                    adjustment=ddd_df[ddd_df['variable']==var]['coef'].loc[0]
+                    effect_cf=effect-adjustment
+                else :
+                    effect_cf=None
+                    
                 results.append({
                 "time": time,
                 "in_paris": paris,
