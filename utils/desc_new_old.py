@@ -217,8 +217,8 @@ def ttest_by_time(df, times: list=["2012"], in_paris=[0, 1], is_new_host=[1], va
                     "sig":[sig],
                     'is_new_host':new,
                     'mean':[early.mean()],
+                    'label':f"{var} {sig}",
                     "change":"+" if change > 0 else "-"
-                    # 'label':f"{var} {sig}"
 
                 })
                 row_late= pd.DataFrame({
@@ -230,8 +230,9 @@ def ttest_by_time(df, times: list=["2012"], in_paris=[0, 1], is_new_host=[1], va
                     "sig":[sig],
                     'is_new_host':new,
                     'mean':[late.mean()],
+                    'label':f"{var} {sig}",
                     "change":"+" if change > 0 else "-"
-                    # 'label':f"{var} {sig}"
+
                 })
                 rows.append(row_early)
                 rows.append(row_late)
