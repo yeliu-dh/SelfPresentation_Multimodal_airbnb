@@ -182,7 +182,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     # tick
     ax.set_xticks(x)
     ax.set_xticklabels(sub['time'].unique())
-    ax.tick_params(axis="ddd", rotation=30)
+    ax.tick_params(axis="x", rotation=30)
     
     # xylabel
     ax.set_xlabel("Temps")
@@ -226,7 +226,7 @@ def get_cf_data(df, model, var):
     return agg 
 
 
-def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title=None, ylabel=None):
+def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title=None, ylabel=None, cf=False):
     if not axes:
         fig, ax=plt.subplots(figsize=(6,4))
     else :
@@ -251,19 +251,20 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
     )    
     
     # ---paris cf---
-    ax.plot(
-        x,
-        # paris["time"],#.map(time_map),
-        paris["y_cf"],
-        marker="o",
-        linestyle="--",
-        label="Contrefactuel(Paris)",
-        color='tab:orange'
-    )
-    # + sig
-    xi,yi, sig=2, paris[paris["time"]=="2406"]['y_cf'].iloc[0],ddd_sig
-    ax.text(xi+0.05, yi + 0.002, sig, ha='center', 
-        color='tab:orange', fontsize=12)
+    if cf==True:
+        ax.plot(
+            x,
+            # paris["time"],#.map(time_map),
+            paris["y_cf"],
+            marker="o",
+            linestyle="--",
+            label="Contrefactuel(Paris)",
+            color='tab:orange'
+        )
+        # + sig
+        xi,yi, sig=2, paris[paris["time"]=="2406"]['y_cf'].iloc[0],ddd_sig
+        ax.text(xi+0.05, yi + 0.002, sig, ha='center', 
+            color='tab:orange', fontsize=12)
     
     
     # ---london obs---
@@ -345,10 +346,8 @@ from scipy import stats
 def linear_combo(model, terms):
     """
     terms:
-    
-    
+
     """
-    
     coefs = model.params
     cov = model.cov_params()
     
@@ -519,7 +518,7 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
 
 
     
-def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):   
+def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None, cf=True, hline_value=None):   
     # ---data---
     df=df_plot[df_plot['variable']==var].copy()
     if df_plot.empty:
@@ -549,7 +548,7 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
                 paris["ci_high"] - paris["effect_hat"]
             ],
         marker="s",
-        # alpha=0.6,
+        alpha=1,
 
         label="Observé (Paris)",
         color=color_paris
@@ -557,24 +556,24 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
     for xi, yi, sig in zip(x, paris["effect_hat"], paris["sig"]):
         ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
         color=color_paris, fontsize=12)
-                    
-    # ---paris cf---
-    ax.errorbar(
-        x,
-        # paris["time"],#.map(time_map),
-        paris["effect_cf"],
-        marker="s",
-        linestyle="--",
-        label="Contrefactuel(Paris)",
-        color=color_paris
-    )
-    for xi, yi, sig in zip(x, paris["effect_cf"], paris["sig"]):
-        ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
-        color=color_paris, fontsize=12)
     
+    # ---paris cf---
+    if cf==True:
+        ax.errorbar(
+            x,
+            # paris["time"],#.map(time_map),
+            paris["effect_cf"],
+            marker="s",
+            linestyle="--",
+            label="Contrefactuel(Paris)",
+            color=color_paris
+        )
+        for xi, yi, sig in zip(x, paris["effect_cf"], paris["sig"]):
+            ax.text(xi+0.05, yi + 0.001, sig, ha='center', 
+            color=color_paris, fontsize=12)
+        
 
     # ---london obs---
-    
     control = df[df["in_paris"] == 0]
     color_london="tab:blue"
     
@@ -587,7 +586,7 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
                 control["ci_high"] - control["effect_hat"]
             ],
         marker="s",
-        alpha=0.6,
+        alpha=0.8,
         label="Observé (Londres)",
         color=color_london
     )
@@ -595,8 +594,8 @@ def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None):
             ax.text(xi+0.08, yi-0.001, sig, ha='center', 
             color=color_london, fontsize=12)                         
     
-        
-    ax.axhline(0, color="lightgray", linestyle="--")  # 零效应线
+    hline_value = 0 if hline_value is None else hline_value
+    ax.axhline(hline_value, color="lightgray", linestyle="--")  # 零效应线
     ax.set_xticks(x)# x
     ax.set_xticklabels(df['time'].unique())
     
