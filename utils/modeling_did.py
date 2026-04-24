@@ -232,7 +232,7 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
     else :
         ax=axes[i]
 
-    agg=agg_all[agg_all['variable']==var]
+    agg=agg_all[agg_all['label']==var]
     # display(agg)
     
     x=list(range(len(agg['time'].unique())))
@@ -520,7 +520,7 @@ def plot_one_real_effect(df_plot, var, axes=None, i=0, title=None):
     
 def plot_one_real_cf_effect(df_plot, var, axes=None, i=0, title=None, cf=True, hline_value=None):   
     # ---data---
-    df=df_plot[df_plot['variable']==var].copy()
+    df=df_plot[df_plot['label']==var].copy()
     if df_plot.empty:
         print(f"[warning] filter to 0!")
         

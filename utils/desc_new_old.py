@@ -183,7 +183,7 @@ def ttest_superhost(df, times: list=["2012"], in_paris=[0, 1], vars=tactics_bio)
 
 
 # 2312 vs 2406
-def ttest_by_time(df, times: list=["2012"], in_paris=[0, 1], is_new_host=[1], vars=tactics_bio):
+def ttest_by_time(df, times: list=["2306"], in_paris=[0, 1], is_new_host=[1], vars=tactics_bio):
     # ---data---
     df_t=df.copy()        
     df_t = df_t[df_t['time'].isin(times)]
@@ -194,6 +194,11 @@ def ttest_by_time(df, times: list=["2012"], in_paris=[0, 1], is_new_host=[1], va
     groups_in_paris=df_t['in_paris'].unique()
     groups_new_host=df_t['is_new_host'].unique()
     # print(groups_in_paris)
+    var_map={
+        'is_portrait':'portrait',
+        'is_lifestyle':'photo de vie',
+        'no_person':'sans personne'
+    }
     
     rows=[]
     for new in groups_new_host: # 统一
@@ -217,7 +222,7 @@ def ttest_by_time(df, times: list=["2012"], in_paris=[0, 1], is_new_host=[1], va
                     "sig":[sig],
                     'is_new_host':new,
                     'mean':[early.mean()],
-                    'label':f"{var} {sig}",
+                    'label':f"{var_map.get(var,'') if var in var_map.keys() else var}",
                     "change":"+" if change > 0 else "-"
 
                 })
@@ -230,7 +235,7 @@ def ttest_by_time(df, times: list=["2012"], in_paris=[0, 1], is_new_host=[1], va
                     "sig":[sig],
                     'is_new_host':new,
                     'mean':[late.mean()],
-                    'label':f"{var} {sig}",
+                    'label':f"{var_map.get(var,'') if var in var_map.keys() else var}",
                     "change":"+" if change > 0 else "-"
 
                 })
