@@ -141,7 +141,8 @@ def run_fa(
         if fa_names:
             fa_names_in_tab=fa_names
             ##如有fa输入按照这个整理!
-            desired_order=['gamma','sigma','ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
+            # desired_order=['gamma','sigma','ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
+            desired_order=['ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
             
         else :
             #没有fa_names，则无法按照上面的顺序整理！
@@ -150,7 +151,6 @@ def run_fa(
         columns = ['gamma', 'sigma'] + \
                 fa_names_in_tab + \
                 ["communalité","spécificité"]
-                # ['communality', 'uniqueness']
 
         df_fa = pd.DataFrame(
             np.column_stack([gamma, sigma, loadings, communalities, uniqueness]),
