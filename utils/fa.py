@@ -63,7 +63,10 @@ def run_fa(
         print(f"[WARNING] These items are missing in df: {missing_labels}\n")
 
     else :        
-        df_dropna=df.dropna(subset=items).drop_duplicates(subset=items)
+        # df_dropna=df.dropna(subset=items).drop_duplicates(subset=items)
+        df_dropna=df_zsc.dropna(subset=['host_about']).drop_duplicates(subset=['host_about'])
+        df_dropna=df_dropna.dropna(subset=items).drop_duplicates(subset=items)
+
         # df[df[items].sum(axis=1)!=0]
         data=df_dropna[items]
         print(f"[info] df_zsc: {len(df_zsc)} rows; df_items:{len(df_dropna)} rows!\n")
@@ -408,12 +411,17 @@ def run_fa(
         comm_df = comm_df.sort_values("Communality")
 
         plt.figure(figsize=(10,6))
-        colors = sns.color_palette("tab10", n_colors=2)  # "viridis", 两个指标
+        colors = sns.color_palette("tab20", n_colors=2)  # "viridis", 两个指标
 
         comm_df.plot(kind='bar', stacked=False, color=colors)# edgecolor='black'
-        plt.title("Communalités et spécificités des items", fontsize=16)
-        plt.ylabel("Proportion de la Variance Expliquée")
+        plt.title("Communalités et spécificités des items", fontsize=14)
+        plt.ylabel("Proportion de la variance expliquée")
+        plt.xlabel("Items")
+
         plt.xticks(rotation=45, ha='right')
+        # plt.axhline(y=0.5, linestyle='--',color="red")
+        
+
         plt.legend(title='Metric')
         plt.tight_layout()
         outpath_barplot=os.path.join(output_folder,"comm_uniq_barplot.jpg")
