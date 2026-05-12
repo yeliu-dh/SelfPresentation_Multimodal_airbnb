@@ -186,7 +186,7 @@ def plot_one_did(data, axes=None, i=0, var='authenticité', title=None):
     
     # xylabel
     ax.set_xlabel("Temps")
-    ax.set_ylabel('Différence')
+    ax.set_ylabel('Différence Paris-Londres')
 
     # title
     title= var if title is None else title
@@ -246,7 +246,8 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
         # paris["time"],#.map(time_map),        
         paris["y_hat"],
         marker="o",
-        label="Observé (Paris)",
+        label="Paris",
+        # label="Observé (Paris)",
         color='tab:orange'
     )    
     
@@ -274,7 +275,8 @@ def plot_one_cf(agg_all, axes=None, i=0,  var="authenticité", ddd_sig="", title
         control["y_hat"],
         marker="o",
         # alpha=0.4,
-        label="Observé (Londres)",
+        label="Londres",
+        # label="Observé (Londres)",
         color='tab:blue'
     )
     

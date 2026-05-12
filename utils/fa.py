@@ -134,6 +134,17 @@ def run_fa(
         communalities = fa.get_communalities()
         uniqueness = fa.get_uniquenesses()
 
+        def item_complexity(loadings):
+            """
+            loadings: (n_items × n_factors)
+            """
+            p = loadings**2
+            p = p / np.sum(p, axis=1, keepdims=True)
+            complexity = 1 / np.sum(p**2, axis=1)
+            return complexity
+
+        complexities = item_complexity(loadings)
+
         # gamma 和 sigma
         abs_loadings = np.abs(loadings)
         gamma = abs_loadings.max(axis=1)                   # 最大因子载荷 !
@@ -145,7 +156,7 @@ def run_fa(
             fa_names_in_tab=fa_names
             ##如有fa输入按照这个整理!
             # desired_order=['gamma','sigma','ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
-            desired_order=['ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
+            desired_order=['ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','unicité',"complexité"]
             
         else :
             #没有fa_names，则无法按照上面的顺序整理！
@@ -153,17 +164,17 @@ def run_fa(
             
         columns = ['gamma', 'sigma'] + \
                 fa_names_in_tab + \
-                ["communalité","spécificité"]
+                ["communalité","unicité", "complexité"]
 
         df_fa = pd.DataFrame(
-            np.column_stack([gamma, sigma, loadings, communalities, uniqueness]),
+            np.column_stack([gamma, sigma, loadings, communalities, uniqueness,complexities]),
             index=data.columns,
             columns=columns
         )
         df_fa.round(ndigits)
         
         # reorder 
-        # desired_order=['gamma','sigma','ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','spécificité']
+        # desired_order=['gamma','sigma','ouverture','authenticité','sociabilité',"auto_promotion","exemplarité",'communalité','unicité']
         if desired_order:
             df_fa=df_fa[desired_order]
         
@@ -405,16 +416,16 @@ def run_fa(
         print(f"[info] good item:gamma > 0.5 + sigma < 0.3")
         
         comm_df = pd.DataFrame({
-            'Communality': communalities,
-            'Uniqueness': uniqueness
+            'Communalité': communalities,
+            'Unicité': uniqueness
         }, index=data.columns)
-        comm_df = comm_df.sort_values("Communality")
+        comm_df = comm_df.sort_values("Communalité")
 
         plt.figure(figsize=(10,6))
         colors = sns.color_palette("tab20", n_colors=2)  # "viridis", 两个指标
 
         comm_df.plot(kind='bar', stacked=False, color=colors)# edgecolor='black'
-        plt.title("Communalités et spécificités des items", fontsize=14)
+        plt.title("Communalités et unicité des items", fontsize=14)
         plt.ylabel("Proportion de la variance expliquée")
         plt.xlabel("Items")
 
