@@ -71,7 +71,8 @@ def desc_catORnum(df, vars):
 
 
 ##==================================HOST VARS============================================##
-import langid #这个库速度更快、稳定性高。
+import langid # plus rapide et stable
+
 
 def is_valid_text(text):
     """
@@ -94,9 +95,6 @@ def is_valid_text(text):
     if re.fullmatch(r"https://\S+", text):
         return False
     return True
-
-
-
 
 
 

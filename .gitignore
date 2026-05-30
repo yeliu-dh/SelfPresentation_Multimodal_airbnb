@@ -5,11 +5,9 @@ B_images/images/london*
 B_images/images/paris*
 B_images/results_/*
 
-
 # draft
 sanboxJO/*
 readings/*
-
 docs/*
 
 ## data+output
@@ -18,7 +16,6 @@ data*/*
 output_fa*
 
 # data
-
 B_images/images_*/*
 B_images/embeddings/*
 B_images/embeddings_*/*
