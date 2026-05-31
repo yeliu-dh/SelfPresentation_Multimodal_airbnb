@@ -1,4 +1,7 @@
-
+## data+output
+data*/*
+output*/*
+output_fa*
 
 # B_images
 B_images/images/london*
@@ -13,27 +16,10 @@ latexMM2/*
 paper/*
 docs/*
 
-
 # draft
 sanboxJO/*
 readings/*
 docs/*
-
-## data+output
-data*/*
-# output*/*
-output_fa*
-
-# # data
-# B_images/images_*/*
-# B_images/embeddings/*
-# B_images/embeddings_*/*
-# B_images/annotations_*/*
-# B_images/labels/*
-
-## output
-output_fa/*
-output_mod/*
 
 # note
 note_airbnb.docx
