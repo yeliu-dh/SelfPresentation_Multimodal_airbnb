@@ -6,7 +6,6 @@ Ce projet analyse la dynamique des stratégies de présentation de soi sur Airbn
 
 Dans un contexte de plateforme où la confiance est centrale, les hôtes ajustent de manière stratégique et sensible au contexte leur présentation de soi afin de réduire l’incertitude et renforcer la confiance des voyageurs.
 
----
 
 ## 📊 Données
 
@@ -70,9 +69,11 @@ En termes d’hétérogénéité, les nouveaux hôtes présentent des profils te
 Sur le plan visuel, aucune différence notable n’est observée à Londres entre les deux groupes, tandis qu’à Paris, les nouveaux hôtes se distinguent par une utilisation plus fréquente des photos de type portrait.
 
 ## 📈 Résultats DID
-Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres, notamment pour les stratégies promotionnelles et les photos incluant une présence humaine. Ces résultats suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
+1. Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres.
 
-Enfin, des effets d’hétérogénéité apparaissent selon le profil des hôtes : les nouveaux entrants présentent des ajustements plus larges et diversifiés, tandis que les hôtes établis adoptent des stratégies plus ciblées et cohérentes avec leurs pratiques existantes.
+2. Ces ajustements concernent notamment les stratégies promotionnelles et les photos incluant une présence humaine, qui suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
+
+3. Des effets d’hétérogénéité apparaissent selon le profil des hôtes : les nouveaux entrants présentent des ajustements plus larges et diversifiés, tandis que les hôtes établis adoptent des stratégies plus ciblées et cohérentes avec leurs pratiques existantes.
 
 ---
 ## 📂 Structure du dépôt
