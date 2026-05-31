@@ -3,9 +3,9 @@
 
 ## 📌 Présentation du projet
 
-Ce projet analyse la dynamique des stratégies de présentation de soi sur Airbnb en mobilisant les Jeux Olympiques de Paris 2024 comme choc exogène.
+Ce projet analyse la dynamique des stratégies de présentation de soi sur Airbnb, en mobilisant les Jeux Olympiques de Paris 2024 comme choc exogène.
 
-Dans une plateforme collaborative où la confiance joue un rôle central dans les transactions, les hôtes Airbnb ne s’appuient pas uniquement sur le système de réputation, mais également sur leur présentation de soi afin de réduire l’incertitude et renforcer la confiance perçue des voyageurs. Ils sont ainsi incités à adapter leurs stratégies en fonction du contexte concurrentiel.
+Dans un contexte de plateforme où la confiance est centrale, les hôtes ajustent de manière stratégique et sensible au contexte leur présentation de soi afin de réduire l’incertitude et renforcer la confiance des voyageurs.
 
 ---
 
@@ -64,10 +64,14 @@ Les effets du choc olympique sont analysés à l’aide de modèles en différen
 
 ---
 ## 📈 Résultats principaux
-Les résultats descriptifs montrent une prédominance des tactiques promotionnelles sur le plan textuel, tandis que les dimensions visuelles apparaissent globalement équilibrées.
+Au niveau global, les résultats descriptifs montrent une prédominance des tactiques promotionnelles sur le plan textuel, tandis que les dimensions visuelles apparaissent globalement équilibrées.
 
-Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres, notamment pour les stratégies promotionnelles et les photos incluant une présence humaine.
-Ces résultats suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
+En termes d’hétérogénéité, les nouveaux hôtes présentent des profils textuels plus homogènes, avec des valeurs proches de zéro, tandis que les hôtes établis affichent des orientations plus marquées, notamment vers l’auto-promotion.
+
+Sur le plan visuel, aucune différence notable n’est observée à Londres entre les deux groupes, tandis qu’à Paris, les nouveaux hôtes se distinguent par une utilisation plus fréquente des photos de type portrait.
+
+
+Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres, notamment pour les stratégies promotionnelles et les photos incluant une présence humaine. Ces résultats suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
 
 Enfin, des effets d’hétérogénéité apparaissent selon le profil des hôtes : les nouveaux entrants présentent des ajustements plus larges et diversifiés, tandis que les hôtes établis adoptent des stratégies plus ciblées et cohérentes avec leurs pratiques existantes.
 
