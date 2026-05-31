@@ -80,9 +80,9 @@ Des effets d’hétérogénéité apparaissent selon le profil des hôtes : les 
 
 ## 📂 Structure du dépôt
 
-- **A_preprocess/** : données Airbnb prétraitées  
-- **B_images/** : variables visuelles  
-- **C_bio/** : tactiques textuelles (zero-shot)  
+- **A_preprocess/** : prétraitement des données Airbnb  (nettoyage, filtrage)
+- **B_images/** : tactiques visuelles  (détection faciale + clip)
+- **C_bio/** : tactiques textuelles (zéro-shot + fa)  
 - **D_stats/** : analyses économétriques (DID)  
 - **utils/** : fonctions utilitaires  
 - **requirements.txt** : dépendances  
