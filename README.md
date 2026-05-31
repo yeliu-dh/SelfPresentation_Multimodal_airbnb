@@ -62,14 +62,14 @@ Les effets du choc olympique sont analysés à l’aide de modèles en différen
 - et les différences selon le profil d’hôte (nouveaux entrants vs hôtes établis).
 
 ---
-## 📈 Résultats principaux
+## 📈 Résultats descriptifs
 Au niveau global, les résultats descriptifs montrent une prédominance des tactiques promotionnelles sur le plan textuel, tandis que les dimensions visuelles apparaissent globalement équilibrées.
 
 En termes d’hétérogénéité, les nouveaux hôtes présentent des profils textuels plus homogènes, avec des valeurs proches de zéro, tandis que les hôtes établis affichent des orientations plus marquées, notamment vers l’auto-promotion.
 
 Sur le plan visuel, aucune différence notable n’est observée à Londres entre les deux groupes, tandis qu’à Paris, les nouveaux hôtes se distinguent par une utilisation plus fréquente des photos de type portrait.
 
-
+## 📈 Résultats DID
 Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres, notamment pour les stratégies promotionnelles et les photos incluant une présence humaine. Ces résultats suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
 
 Enfin, des effets d’hétérogénéité apparaissent selon le profil des hôtes : les nouveaux entrants présentent des ajustements plus larges et diversifiés, tandis que les hôtes établis adoptent des stratégies plus ciblées et cohérentes avec leurs pratiques existantes.
