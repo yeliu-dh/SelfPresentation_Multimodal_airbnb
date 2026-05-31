@@ -58,7 +58,7 @@ Les photos de profil sont traitées à l’aide d’un pipeline combinant :
 
 Les effets du choc olympique sont analysés à l’aide de modèles en différences-en-différences (OLS), afin d’étudier :
 - l’effet du choc sur l’ensemble des hôtes,
-- et les différences selon le profil d’hôte (nouveaux entrants vs hôtes établis).
+- l'effet hétérogène selon le profil d’hôte.
 
 ---
 ## 📈 Résultats principaux 
