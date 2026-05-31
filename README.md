@@ -6,7 +6,6 @@ Ce projet analyse la dynamique des stratégies de présentation de soi sur Airbn
 
 Dans un contexte de plateforme où la confiance est centrale, les hôtes ajustent de manière stratégique et sensible au contexte leur présentation de soi afin de réduire l’incertitude et renforcer la confiance des voyageurs.
 
-
 ## 📊 Données
 
 Cette étude s’appuie sur des données Airbnb collectées à Paris et à Londres à trois périodes :
@@ -20,6 +19,7 @@ Les hôtes sont classés en deux groupes :
 - **nouveaux hôtes** : hôtes dont l’identifiant n’apparaît pas dans la vague d’observation précédente ;  
 - **hôtes établis** : hôtes déjà présents dans les vagues précédentes.
 
+---
 
 ## 🧠 Construction des tactiques de présentation de soi
 
@@ -62,7 +62,7 @@ Les effets du choc olympique sont analysés à l’aide de modèles en différen
 
 ---
 ## 📈 Résultats principaux 
-### descriptifs
+### Descriptifs
 Au niveau global, les résultats descriptifs montrent une prédominance des tactiques promotionnelles sur le plan textuel, tandis que les dimensions visuelles apparaissent globalement équilibrées.
 
 En termes d’hétérogénéité, les nouveaux hôtes présentent des profils textuels plus homogènes, avec des valeurs proches de zéro, tandis que les hôtes établis affichent des orientations plus marquées, notamment vers l’auto-promotion.
@@ -70,11 +70,11 @@ En termes d’hétérogénéité, les nouveaux hôtes présentent des profils te
 Sur le plan visuel, aucune différence notable n’est observée à Londres entre les deux groupes, tandis qu’à Paris, les nouveaux hôtes se distinguent par une utilisation plus fréquente des photos de type portrait.
 
 ### DID
-1. Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres.
+Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres.
 
-2. Ces ajustements concernent notamment les stratégies promotionnelles et les photos incluant une présence humaine, qui suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
+Ces ajustements concernent notamment les stratégies promotionnelles et les photos incluant une présence humaine, qui suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
 
-3. Des effets d’hétérogénéité apparaissent selon le profil des hôtes : les nouveaux entrants présentent des ajustements plus larges et diversifiés, tandis que les hôtes établis adoptent des stratégies plus ciblées et cohérentes avec leurs pratiques existantes.
+Des effets d’hétérogénéité apparaissent selon le profil des hôtes : les nouveaux entrants présentent des ajustements plus larges et diversifiés, tandis que les hôtes établis adoptent des stratégies plus ciblées et cohérentes avec leurs pratiques existantes.
 
 ---
 
