@@ -63,12 +63,13 @@ def run_fa(
         print(f"[WARNING] These items are missing in df: {missing_labels}\n")
 
     else :        
-        # df_dropna=df.dropna(subset=items).drop_duplicates(subset=items)
-        df_dropna=df_zsc.dropna(subset=['host_about']).drop_duplicates(subset=['host_about'])
-        df_dropna=df_dropna.dropna(subset=items).drop_duplicates(subset=items)
+        df_dropna=df.dropna(subset=items).drop_duplicates(subset=items)
+        
+        # df_dropna=df_zsc.dropna(subset=['host_about']).drop_duplicates(subset=['host_about'])
+        # df_dropna=df_dropna.dropna(subset=items).drop_duplicates(subset=items)
 
         # df[df[items].sum(axis=1)!=0]
-        data=df_dropna[items]
+        data = df_dropna[items]
         print(f"[info] df_zsc: {len(df_zsc)} rows; df_items:{len(df_dropna)} rows!\n")
 
         # print(f"[INFO] len scores in df notna:{len(data)}\n")
