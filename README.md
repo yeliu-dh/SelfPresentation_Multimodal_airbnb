@@ -2,13 +2,22 @@
 
 ## 📌 Présentation du projet
 
-Ce projet analyse la dynamique des stratégies de présentation de soi sur Airbnb, en mobilisant les Jeux Olympiques de Paris 2024 comme choc exogène.
+Ce projet analyse la dynamique des stratégies de présentation de soi sur Airbnb en prenant les Jeux Olympiques de Paris 2024 comme un choc exogène affectant le marché de la location de courte durée.
 
-Dans un contexte de plateforme où la confiance est centrale, les hôtes ajustent de manière stratégique et sensible au contexte leur présentation de soi afin de réduire l’incertitude et renforcer la confiance des voyageurs.
+Dans un contexte de plateforme P2P, où la confiance joue un rôle essentiel, les hôtes Airbnb mobilisent non seulement le système de réputation, mais aussi leur présentation de soi afin d'envoyer des signaux de crédibilité et de réduire l'incertitude.
+
+## 🙋‍♀️ Questions de recherche
+
+1. Comment les hôtes ajustent-ils leur présentation de soi ?
+
+2. Existe-il une logique similaire entre les signaux textuels et visuels ?
+
+3. Les nouveaux entrants et les hôtes établis, ajustent-ils leur présentation de soi de manière différente ?
 
 ## 📊 Données
 
-Cette étude s’appuie sur des données Airbnb collectées à Paris et à Londres à trois périodes :
+Cette étude s’appuie sur des données Airbnb collectées à Paris et à Londres à trois périodes sur le site [Inside Airbnb](https://insideairbnb.com/get-the-data/):
+
 - Juin 2023
 - Décembre 2023
 - Juin 2024
