@@ -16,13 +16,13 @@ Dans un contexte de plateforme P2P, où la confiance joue un rôle essentiel, le
 
 ## 📊 Données
 
-Cette étude s’appuie sur des données Airbnb collectées à Paris et à Londres à trois périodes sur le site [Inside Airbnb](https://insideairbnb.com/get-the-data/):
+Cette étude s'appuie sur des données Airbnb collectées à Paris et à Londres à trois périodes d'observation, avant et après le choc olympique, à partir des données mises à disposition par [Inside Airbnb](https://insideairbnb.com/get-the-data/):
 
 - Juin 2023
 - Décembre 2023
 - Juin 2024
 
-## 🧑‍💼 Définition des hôtes
+## 🧑‍💼 Variable clé : profils des hôtes
 
 Les hôtes sont classés en deux groupes :  
 - **nouveaux hôtes** : hôtes dont l’identifiant n’apparaît pas dans la vague d’observation précédente ;  
@@ -78,7 +78,7 @@ En termes d’hétérogénéité, les nouveaux hôtes présentent des profils te
 
 Sur le plan visuel, aucune différence notable n’est observée à Londres entre les deux groupes, tandis qu’à Paris, les nouveaux hôtes se distinguent par une utilisation plus fréquente des photos de type portrait.
 
-### DID
+### Différence-en-différences pendant les JO
 Les estimations en différences-en-différences indiquent que la majorité des tactiques évoluent plus favorablement à Paris qu’à Londres.
 
 Ces ajustements concernent notamment les stratégies promotionnelles et les photos incluant une présence humaine, qui suggèrent une intensification des signaux de confiance directes et rapides dans un contexte de concurrence accrue.
